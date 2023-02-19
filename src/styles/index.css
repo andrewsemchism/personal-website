@@ -1,0 +1,9 @@
+/* Navbar styles */
+#bootstrap-overrides nav {
+  background-color: #274156 !important;
+}
+
+body {
+  background-color: #274156;
+}
+
