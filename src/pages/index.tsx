@@ -2,51 +2,61 @@ import * as React from "react"
 import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
-import NavDropdown from 'react-bootstrap/NavDropdown';
+import Col from 'react-bootstrap/Col';
+import Row from "react-bootstrap/Row";
 import 'bootstrap/dist/css/bootstrap.css';
 import '../styles/index.css';
 import logo from '../images/logo.svg';
+import andrewCartoon from '../images/andrew-cartoon.jpg';
+import { StaticImage } from "gatsby-plugin-image"
 import type { HeadFC, PageProps } from "gatsby"
+
 
 const IndexPage: React.FC<PageProps> = () => {
   return (
-    <div id="#bootstrap-overrides">
+    <div id="bootstrap-overrides">
       <Navbar expand="lg">
-        <Container>
-        <Navbar.Brand href="#home">
+        <Container fluid>
+          <Navbar.Brand href="#home">
             <img
               src={logo}
-              width="50"
-              height="50"
+              width="60"
+              height="60"
               className="d-inline-block align-top"
               alt="React Bootstrap logo"
             />
           </Navbar.Brand>
-          <Navbar.Toggle aria-controls="basic-navbar-nav" />
+          <Navbar.Toggle aria-controls="basic-navbar-nav"/>
           <Navbar.Collapse id="basic-navbar-nav">
-            <Nav className="me-auto">
-              <Nav.Link href="#home">Home</Nav.Link>
-              <Nav.Link href="#link">Link</Nav.Link>
-              <NavDropdown title="Dropdown" id="basic-nav-dropdown">
-                <NavDropdown.Item href="#action/3.1">Action</NavDropdown.Item>
-                <NavDropdown.Item href="#action/3.2">
-                  Another action
-                </NavDropdown.Item>
-                <NavDropdown.Item href="#action/3.3">Something</NavDropdown.Item>
-                <NavDropdown.Divider />
-                <NavDropdown.Item href="#action/3.4">
-                  Separated link
-                </NavDropdown.Item>
-              </NavDropdown>
+            <Nav className="ms-auto">
+              <Nav.Link href="#experience">EXPERIENCE</Nav.Link>
+              <Nav.Link href="#projects">PROJECTS</Nav.Link>
+              <Nav.Link href="#contact">CONTACT</Nav.Link>
             </Nav>
           </Navbar.Collapse>
         </Container>
       </Navbar>
-      <main>
-        <h2>Hi, my name is</h2>
-        <h1>Andrew Semchism</h1>
-        <h2>I love software engineering</h2>
-        <p>I am a third year Computer Science student at the University of Waterloo. I am currently completing and internship a Geotab.</p>
+      <main className="h-100">
+        <Container fluid className="title-content">
+          <Row className="align-items-center">
+            <Col md={2}></Col>
+            <Col md={6}>
+              <h2>Hi, my name is</h2>
+              <h1>Andrew Semchism</h1>
+              <h2>I love software engineering</h2>
+              <p>I am a third year Computer Science student at the University of Waterloo. I am currently completing and internship a Geotab.</p>
+            </Col>
+            <Col md={2}>
+              <StaticImage alt="Cartoon of Andrew" src="../images/andrew-cartoon.jpg"/>
+            </Col>
+            <Col md={2}></Col>
+            
+          </Row>
+          
+        </Container>
+   
+        
+        
       </main>
     </div>
     /*

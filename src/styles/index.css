@@ -1,9 +1,40 @@
 /* Navbar styles */
 #bootstrap-overrides nav {
-  background-color: #274156 !important;
+  background-color: #274156;
+}
+
+#bootstrap-overrides .navbar-nav a {
+  color: #7796cb;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  margin-right: 40px;
+}
+
+#bootstrap-overrides .navbar-brand {
+  padding-left: 30px;
 }
 
 body {
   background-color: #274156;
 }
+
+/* Title */
+.title-content h1 {
+  color: #fbfcff;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 74px;
+}
+
+.title-content h2 {
+  color: #d0ccd0;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.title-content p {
+  color: #888e9e;
+  font-family: 'Inter', sans-serif;
+}
+
 
