@@ -1,4 +1,10 @@
+/* Global styles */
+body {
+  background-color: #274156;
+}
+
 /* Navbar styles */
+
 #bootstrap-overrides nav {
   background-color: #274156;
 }
@@ -15,11 +21,16 @@
   padding-left: 30px;
 }
 
-body {
-  background-color: #274156;
+/* Title */
+
+.title-content {
+  height: 100vh;
 }
 
-/* Title */
+.title-content .row {
+  height: 100%;
+}
+
 .title-content h1 {
   color: #fbfcff;
   font-family: 'Inter', sans-serif;
@@ -37,4 +48,43 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
+.title-content button {
+  font-family: 'Roboto Mono', monospace;
+  color: #888e9e;
+  border-color: #888e9e;
+}
 
+.title-text {
+  margin-top: 40px;
+}
+
+/* Title icons */
+
+.icons {
+  padding-top: 20px;
+  color: #888e9e;
+}
+
+.icons svg {
+  padding-right: 14px;
+}
+
+.icons svg:hover {
+  transform: translateY(-3px);
+  transition: all 0.2s ease-in-out;
+}
+
+a {
+  color: #888e9e;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #fbfcff;
+}
+
+/* Experience */
+
+.experience-content {
+  height: 100vh;
+}

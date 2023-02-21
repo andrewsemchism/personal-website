@@ -4,10 +4,12 @@ import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import Col from 'react-bootstrap/Col';
 import Row from "react-bootstrap/Row";
+import Button from "react-bootstrap/Button";
 import 'bootstrap/dist/css/bootstrap.css';
 import '../styles/index.css';
 import logo from '../images/logo.svg';
-import andrewCartoon from '../images/andrew-cartoon.jpg';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faGithub, faLinkedin } from "@fortawesome/free-brands-svg-icons"
 import { StaticImage } from "gatsby-plugin-image"
 import type { HeadFC, PageProps } from "gatsby"
 
@@ -15,7 +17,7 @@ import type { HeadFC, PageProps } from "gatsby"
 const IndexPage: React.FC<PageProps> = () => {
   return (
     <div id="bootstrap-overrides">
-      <Navbar expand="lg">
+      <Navbar expand="lg" fixed="top">
         <Container fluid>
           <Navbar.Brand href="#home">
             <img
@@ -36,23 +38,32 @@ const IndexPage: React.FC<PageProps> = () => {
           </Navbar.Collapse>
         </Container>
       </Navbar>
-      <main className="h-100">
+      <main>
         <Container fluid className="title-content">
           <Row className="align-items-center">
-            <Col md={2}></Col>
-            <Col md={6}>
-              <h2>Hi, my name is</h2>
-              <h1>Andrew Semchism</h1>
-              <h2>I love software engineering</h2>
-              <p>I am a third year Computer Science student at the University of Waterloo. I am currently completing and internship a Geotab.</p>
+            <Col xs={0} lg={1} xl={2}></Col>
+            <Col lg={7} xl={6}>
+              <div className="title-text">
+                <h2>Hi, my name is</h2>
+                <h1>Andrew Semchism</h1>
+                <h2>I love software engineering.</h2>
+                <p>I am a third year Computer Science student at the University of Waterloo. I am currently completing an internship a Geotab.</p>
+                <Button variant="outline-secondary">Contact Me</Button>
+                <div className="icons">
+                  <a href="https://github.com/andrewsemchism" target="_blank"><FontAwesomeIcon icon={faGithub} size="2xl"/></a>
+                  <a href="https://linkedin.com/in/andrew-semchism-11a56a1a4" target="_blank"><FontAwesomeIcon icon={faLinkedin} size="2xl"/></a>
+                </div>
+              </div>
             </Col>
-            <Col md={2}>
+            <Col xs={0} lg={3} xl={2}>
               <StaticImage alt="Cartoon of Andrew" src="../images/andrew-cartoon.jpg"/>
             </Col>
-            <Col md={2}></Col>
-            
+            <Col lg={1} xl={2}></Col>
           </Row>
-          
+        </Container>
+
+        <Container fluid className="experience-content">
+        
         </Container>
    
         
