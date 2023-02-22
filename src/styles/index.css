@@ -95,3 +95,18 @@ a:hover {
 .experience-content {
   height: 100vh;
 }
+
+.experience-content .row {
+  height: 100%;
+}
+
+#bootstrap-overrides .nav-link {
+  background-color: #274156;
+  color: #d0ccd0;
+}
+
+#bootstrap-overrides .nav-pills .nav-link.active {
+  background-color: none;
+  border: 1px solid #7796cb;
+  
+}

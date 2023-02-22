@@ -6,12 +6,14 @@ import Col from 'react-bootstrap/Col';
 import Row from "react-bootstrap/Row";
 import Button from "react-bootstrap/Button";
 import 'bootstrap/dist/css/bootstrap.css';
+import 'bootstrap/dist/js/bootstrap.js';
 import '../styles/index.css';
 import logo from '../images/logo.svg';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGithub, faLinkedin } from "@fortawesome/free-brands-svg-icons"
 import { StaticImage } from "gatsby-plugin-image"
 import type { HeadFC, PageProps } from "gatsby"
+import TabSelector from "../components/tabs/tabs";
 
 
 const IndexPage: React.FC<PageProps> = () => {
@@ -47,7 +49,7 @@ const IndexPage: React.FC<PageProps> = () => {
                 <h2>Hi, my name is</h2>
                 <h1>Andrew Semchism</h1>
                 <h2>I love software engineering.</h2>
-                <p>I am a third year Computer Science student studying at the University of Waterloo. I am currently completing an internship a Geotab.</p>
+                <p>I'm a third year Computer Science student studying at the University of Waterloo. I am currently completing an internship a Geotab.</p>
                 <Button variant="outline-secondary">Contact Me</Button>
                 <div className="icons">
                   <a href="https://github.com/andrewsemchism" target="_blank"><FontAwesomeIcon icon={faGithub} size="2xl"/></a>
@@ -61,9 +63,20 @@ const IndexPage: React.FC<PageProps> = () => {
             <Col xs={0} md={0} lg={1} xl={2}></Col>
           </Row>
         </Container>
-
-        <Container fluid className="experience-content">
         
+        <Container fluid className="experience-content">
+          
+          <Row className="align-items-center">
+            <Col xs={0} md={0} lg={1} xl={2}></Col>
+            <Col>
+              <TabSelector/>
+            </Col>
+            <Col>
+            <h2>Projects</h2>
+            </Col>
+            <Col xs={0} md={0} lg={1} xl={2}></Col>
+          </Row>
+          
         </Container>
    
         
