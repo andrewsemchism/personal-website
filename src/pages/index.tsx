@@ -38,7 +38,6 @@ const IndexPage: React.FC<PageProps> = () => {
           <Navbar.Collapse id="basic-navbar-nav">
             <Nav className="ms-auto">
               <Nav.Link href="#experience">EXPERIENCE</Nav.Link>
-              <Nav.Link href="#projects">PROJECTS</Nav.Link>
               <Nav.Link href="#contact">CONTACT</Nav.Link>
             </Nav>
           </Navbar.Collapse>
@@ -68,14 +67,15 @@ const IndexPage: React.FC<PageProps> = () => {
           </Row>
         </Container>
         
-        <Container fluid className="experience-content">
-          
-          <Row className="align-items-center">
+        <Container fluid id="experience" className="experience-content">
+          <Row className="align-items-start">
             <Col xs={0} md={0} lg={1} xl={2}></Col>
             <Col xs={12} md={6} lg={5} xl={4}>
+              <h2>Work Experience</h2>
               <TabSelector/>
             </Col>
             <Col xs={12} md={6} lg={5} xl={4}>
+              <h2>Featured Projects</h2>
               <Container fluid>
                 <Row>
                   <Col>
