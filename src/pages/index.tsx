@@ -9,11 +9,15 @@ import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap/dist/js/bootstrap.js';
 import '../styles/index.css';
 import logo from '../images/logo.svg';
+import beerBoss from '../images/beerboss.png';
+import adGuesser from '../images/adguesser.png';
+import piDashboard from '../images/pidashboard.png';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGithub, faLinkedin } from "@fortawesome/free-brands-svg-icons"
 import { StaticImage } from "gatsby-plugin-image"
 import type { HeadFC, PageProps } from "gatsby"
 import TabSelector from "../components/tabs/tabs";
+import ImageComponent from "../components/ImageComponent/ImageComponent";
 
 
 const IndexPage: React.FC<PageProps> = () => {
@@ -68,11 +72,35 @@ const IndexPage: React.FC<PageProps> = () => {
           
           <Row className="align-items-center">
             <Col xs={0} md={0} lg={1} xl={2}></Col>
-            <Col>
+            <Col xs={12} md={6} lg={5} xl={4}>
               <TabSelector/>
             </Col>
-            <Col>
-            <h2>Projects</h2>
+            <Col xs={12} md={6} lg={5} xl={4}>
+              <Container fluid>
+                <Row>
+                  <Col>
+                    <ImageComponent
+                    imageUrl={beerBoss}
+                    title="BeerBoss.ca"
+                    description="Ontario Beer Store price optimization."></ImageComponent>
+                  </Col>
+                </Row>
+                <Row>
+                <Col>
+                  <ImageComponent
+                  imageUrl={adGuesser}
+                  title="Ad Guesser"
+                  description="Guessing game build with React."></ImageComponent>
+                </Col>
+                <Col>
+                  <ImageComponent
+                  imageUrl={piDashboard}
+                  title="Pi Dashboard"
+                  description="3D Printed Pi dashboard."></ImageComponent>
+                </Col>
+
+                </Row>
+              </Container>
             </Col>
             <Col xs={0} md={0} lg={1} xl={2}></Col>
           </Row>
