@@ -54,7 +54,7 @@ const IndexPage: React.FC<PageProps> = () => {
                 <h1>Andrew Semchism</h1>
                 <h2>I love software engineering.</h2>
                 <p>I'm a third year Computer Science student studying at the University of Waterloo. I am currently completing an internship a Geotab.</p>
-                <Button variant="outline-secondary">Contact Me</Button>
+                <Button variant="outline-secondary" href="#contact">Contact Me</Button>
                 <div className="icons">
                   <a href="https://github.com/andrewsemchism" target="_blank"><FontAwesomeIcon icon={faGithub} size="2xl"/></a>
                   <a href="https://linkedin.com/in/andrew-semchism-11a56a1a4" target="_blank"><FontAwesomeIcon icon={faLinkedin} size="2xl"/></a>
@@ -82,7 +82,8 @@ const IndexPage: React.FC<PageProps> = () => {
                     <ImageComponent
                     imageUrl={beerBoss}
                     title="BeerBoss.ca"
-                    description="Ontario Beer Store price optimization."></ImageComponent>
+                    description="Ontario Beer Store price optimization."
+                    link="https://beerboss.ca/"></ImageComponent>
                   </Col>
                 </Row>
                 <Row>
@@ -90,13 +91,15 @@ const IndexPage: React.FC<PageProps> = () => {
                   <ImageComponent
                   imageUrl={adGuesser}
                   title="Ad Guesser"
-                  description="Guessing game build with React."></ImageComponent>
+                  description="Guessing game build with React."
+                  link="https://github.com/andrewsemchism/adguesser"></ImageComponent>
                 </Col>
                 <Col>
                   <ImageComponent
                   imageUrl={piDashboard}
                   title="Pi Dashboard"
-                  description="3D Printed Pi dashboard."></ImageComponent>
+                  description="3D Printed Pi dashboard."
+                  link="https://github.com/andrewsemchism/pi-lcd-dashboard"></ImageComponent>
                 </Col>
 
                 </Row>

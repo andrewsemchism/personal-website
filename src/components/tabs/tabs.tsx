@@ -17,7 +17,7 @@ const jobs: Job[] = [
   {
     company: 'Geotab',
     title: 'Software Developer',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+    description: 'At Geotab, I am working on MyGeotab, a web application that allows users to manage their fleet of vehicles.',
     startDate: 'January 2023',
     endDate: 'April 2023',
     logo: geotabLogo,
@@ -25,7 +25,7 @@ const jobs: Job[] = [
   {
     company: '1Password',
     title: 'Junior Developer',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+    description: 'At 1Password, I honed my React skills and learned to write high-quality, testable code with Jest. Read more about my experience in a 1Password blog post.',
     startDate: 'May 2022',
     endDate: 'Aug. 2022',
     logo: onepasswordLogo,
@@ -33,7 +33,7 @@ const jobs: Job[] = [
   {
     company: 'Rich Media',
     title: 'Web Developer',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+    description: 'At Rich Media, I gained hands-on experience working with HTML, CSS, and JavaScript, collaborating with designers to create polished, user-friendly web products.',
     startDate: 'May 2021',
     endDate: 'Aug. 2021',
     logo: richmediaLogo,
