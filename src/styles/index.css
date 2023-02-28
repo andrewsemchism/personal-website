@@ -112,3 +112,20 @@ a:hover {
   border: 1px solid #7796cb;
   
 }
+
+/* Contact */
+
+.contact-content {
+  height: 90vh;
+}
+
+.contact-content h2 {
+  color: #d0ccd0;
+  font-family: 'Roboto Mono', monospace;
+  margin-bottom: 14px;
+}
+
+.contact-content p {
+  color: #888e9e;
+  font-family: 'Inter', sans-serif;
+}

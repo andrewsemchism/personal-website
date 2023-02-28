@@ -18,6 +18,7 @@ import { StaticImage } from "gatsby-plugin-image"
 import type { HeadFC, PageProps } from "gatsby"
 import TabSelector from "../components/tabs/tabs";
 import ImageComponent from "../components/ImageComponent/ImageComponent";
+import { faEnvelope } from "@fortawesome/free-solid-svg-icons";
 
 
 const IndexPage: React.FC<PageProps> = () => {
@@ -66,7 +67,6 @@ const IndexPage: React.FC<PageProps> = () => {
             <Col xs={0} md={0} lg={1} xl={2}></Col>
           </Row>
         </Container>
-        
         <Container fluid id="experience" className="experience-content">
           <Row className="align-items-start">
             <Col xs={0} md={0} lg={1} xl={2}></Col>
@@ -104,7 +104,22 @@ const IndexPage: React.FC<PageProps> = () => {
             </Col>
             <Col xs={0} md={0} lg={1} xl={2}></Col>
           </Row>
-          
+        </Container>
+        <Container fluid id="contact" className="contact-content">
+        <Row className="align-items-start">
+            <Col xs={0} md={0} lg={1} xl={2}></Col>
+            <Col xs={12} md={6} lg={5} xl={4}>
+              <h2>Get In Touch</h2>
+              <p>Thank you for visiting my site. If you're interested in learning more about my experience as a software developer or UWaterloo Computer Science student, please don't hesitate to reach out to me via email at andrewsemchism@gmail.com.</p>
+              <div className="icons">
+                <a href="https://linkedin.com/in/andrew-semchism-11a56a1a4" target="_blank"><FontAwesomeIcon icon={faLinkedin} size="2xl"/></a>
+                <a href="mailto:andrewsemchism@gmail.com" target="_blank"><FontAwesomeIcon icon={faEnvelope} size="2xl"/></a>
+              </div>
+            </Col>
+            <Col xs={12} md={6} lg={5} xl={4}>
+            </Col>
+            <Col xs={0} md={0} lg={1} xl={2}></Col>
+          </Row>
         </Container>
    
         
