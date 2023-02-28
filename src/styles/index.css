@@ -21,6 +21,18 @@ body {
   padding-left: 30px;
 }
 
+.show {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.hide {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease-in-out;
+}
+
 /* Title */
 
 .title-content {

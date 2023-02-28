@@ -1,4 +1,4 @@
-import * as React from "react"
+import React, { useState, useEffect } from "react";
 import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
@@ -22,11 +22,28 @@ import { faEnvelope } from "@fortawesome/free-solid-svg-icons";
 
 
 const IndexPage: React.FC<PageProps> = () => {
+
+  const [showNavbar, setShowNavbar] = useState(true);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollPosition = window.pageYOffset;
+      if (currentScrollPosition > 250) {
+        setShowNavbar(false);
+      } else {
+        setShowNavbar(true);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <div id="bootstrap-overrides">
-      <Navbar expand="lg" fixed="top">
+      <Navbar expand="lg" fixed="top" className={showNavbar ? "show" : "hide"}>
         <Container fluid>
-          <Navbar.Brand href="#home">
+          <Navbar.Brand>
             <img
               src={logo}
               width="60"
