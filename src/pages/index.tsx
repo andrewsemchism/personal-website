@@ -6,7 +6,7 @@ import Col from 'react-bootstrap/Col';
 import Row from "react-bootstrap/Row";
 import Button from "react-bootstrap/Button";
 import 'bootstrap/dist/css/bootstrap.css';
-import 'bootstrap/dist/js/bootstrap.js';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import '../styles/index.css';
 import logo from '../images/logo.svg';
 import beerBoss from '../images/beerboss.png';
