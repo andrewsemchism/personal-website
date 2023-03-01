@@ -32,6 +32,15 @@
   border-color: #fbfcff;
 }
 
+.job a {
+  color: #b8b7b7;
+  text-decoration: underline;
+}
+
+.job a:hover{
+  color: #fbfcff;
+}
+
 .job-details {
   display: flex;
   flex-direction: column;

@@ -2,8 +2,8 @@ import type { GatsbyConfig } from "gatsby";
 
 const config: GatsbyConfig = {
   siteMetadata: {
-    title: `andrew-semchism`,
-    siteUrl: `https://www.yourdomain.tld`
+    title: `Andrew Semchism`,
+    siteUrl: `https://www.semchism.me`
   },
   // More easily incorporate content into your pages through automatic TypeScript type generation and better GraphQL IntelliSense.
   // If you use VSCode you can also use the GraphQL plugin
@@ -20,6 +20,7 @@ const config: GatsbyConfig = {
   {
     resolve: `gatsby-omni-font-loader`,
     options: {
+      icon: 'src/images/logo.svg',
       enableListener: true,
       preconnect: [`https://fonts.googleapis.com`, `https://fonts.gstatic.com`],
       web: [

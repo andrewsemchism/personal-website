@@ -25,7 +25,7 @@ const jobs: Job[] = [
   {
     company: '1Password',
     title: 'Junior Developer',
-    description: 'At 1Password, I honed my React skills and learned to write high-quality, testable code with Jest. Read more about my experience in a 1Password blog post.',
+    description: 'At 1Password, I honed my React skills and learned to write high-quality, testable code with Jest. Read more about my experience in this <a href="https://blog.1password.com/internship-what-its-like/" target="_blank">1Password blog post.</a>',
     startDate: 'May 2022',
     endDate: 'Aug. 2022',
     logo: onepasswordLogo,
@@ -53,7 +53,7 @@ const TabsSelector: React.FC = () => {
             <h3 className="job-title">{job.title}</h3>
             <p className="job-dates">{job.startDate} - {job.endDate}</p>
             <p className="job-company">{job.company}</p>
-            <p className="job-description">{job.description}</p>
+            <p className="job-description" dangerouslySetInnerHTML={{ __html: job.description }}></p>
           </div>
         </div>
       ))}

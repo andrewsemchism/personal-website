@@ -70,7 +70,7 @@ const IndexPage: React.FC<PageProps> = () => {
                 <h2>Hi, my name is</h2>
                 <h1>Andrew Semchism</h1>
                 <h2>I love software engineering.</h2>
-                <p>I'm a third year Computer Science student studying at the University of Waterloo. I am currently completing an internship a Geotab.</p>
+                <p>I'm a third year Computer Science student studying at the University of Waterloo. I am currently completing an internship at Geotab.</p>
                 <Button variant="outline-secondary" href="#contact">Contact Me</Button>
                 <div className="icons">
                   <a href="https://github.com/andrewsemchism" target="_blank"><FontAwesomeIcon icon={faGithub} size="2xl"/></a>
