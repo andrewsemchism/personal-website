@@ -125,7 +125,7 @@ const IndexPage: React.FC<PageProps> = () => {
           </Row>
         </Container>
         <Container fluid id="contact" className="contact-content">
-        <Row className="align-items-start">
+        <Row className="align-items-start h-100">
             <Col xs={0} md={0} lg={1} xl={2}></Col>
             <Col xs={12} md={6} lg={5} xl={4}>
               <h2>Get In Touch</h2>
