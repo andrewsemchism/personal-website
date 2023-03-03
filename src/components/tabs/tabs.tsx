@@ -33,7 +33,7 @@ const jobs: Job[] = [
   {
     company: 'Rich Media',
     title: 'Web Developer',
-    description: 'At Rich Media, I gained hands-on experience working with HTML, CSS, and JavaScript, collaborating with designers to create polished, user-friendly web products.',
+    description: 'At Rich Media, I gained hands-on experience working with HTML, CSS, and JavaScript. I collaborated with designers to create polished, user-friendly web products.',
     startDate: 'May 2021',
     endDate: 'Aug. 2021',
     logo: richmediaLogo,
