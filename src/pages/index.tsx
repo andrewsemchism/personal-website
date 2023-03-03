@@ -79,12 +79,12 @@ const IndexPage: React.FC<PageProps> = () => {
               </div>
             </Col>
             <Col xs={0} md={4} lg={3} xl={2} className="d-none d-md-block">
-              <StaticImage alt="Cartoon of Andrew" src="../images/andrew-cartoon.jpg"/>
+              <StaticImage placeholder="blurred" alt="Cartoon of Andrew" src="../images/andrew-cartoon.png"/>
             </Col>
             <Col xs={0} md={0} lg={1} xl={2}></Col>
           </Row>
         </Container>
-        <Container fluid id="experience" className="experience-content">
+        <Container fluid id="experience" className="h-100 experience-content">
           <Row className="align-items-start">
             <Col xs={0} md={0} lg={1} xl={2}></Col>
             <Col xs={12} md={6} lg={5} xl={4}>
@@ -126,7 +126,7 @@ const IndexPage: React.FC<PageProps> = () => {
           </Row>
         </Container>
         <Container fluid id="contact" className="contact-content">
-        <Row className="align-items-start h-100">
+        <Row className="align-items-center h-100">
             <Col xs={0} md={0} lg={1} xl={2}></Col>
             <Col xs={12} md={6} lg={5} xl={4}>
               <h2>Get In Touch</h2>

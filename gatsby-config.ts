@@ -34,6 +34,13 @@ const config: GatsbyConfig = {
         }
       ],
     },
+  },
+  {
+    resolve: "gatsby-plugin-manifest",
+    options: {
+      name: "Andrew Semchism",
+      icon : "src/images/logo.svg",
+    }
   }]
 };
 
