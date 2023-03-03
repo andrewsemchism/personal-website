@@ -18,6 +18,7 @@ import type { HeadFC, PageProps } from "gatsby"
 import TabSelector from "../components/tabs/tabs";
 import ImageComponent from "../components/ImageComponent/ImageComponent";
 import { faEnvelope } from "@fortawesome/free-solid-svg-icons";
+import TypeIt from "typeit-react";
 
 
 const IndexPage: React.FC<PageProps> = () => {
@@ -68,7 +69,7 @@ const IndexPage: React.FC<PageProps> = () => {
               <div className="title-text">
                 <h2>Hi, my name is</h2>
                 <h1>Andrew Semchism</h1>
-                <h2>I love software engineering.</h2>
+                <h2><TypeIt>I love software engineering.</TypeIt></h2>
                 <p>I'm a third year Computer Science student studying at the University of Waterloo. I am currently completing an internship at Geotab.</p>
                 <Button variant="outline-secondary" href="#contact">Contact Me</Button>
                 <div className="icons">
