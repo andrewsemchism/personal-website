@@ -1,3 +1,3 @@
 ## Andrew's Personal Website
 
-[semchism.me](https://semchism.ve)
+[semchism.me](https://semchism.me)
