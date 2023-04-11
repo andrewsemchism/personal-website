@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGithub, faLinkedin } from "@fortawesome/free-brands-svg-icons"
 import { StaticImage } from "gatsby-plugin-image"
 import type { HeadFC, PageProps } from "gatsby"
-import TabSelector from "../components/tabs/tabs";
+import Tabs from "../components/Tabs/Tabs";
 import ImageComponent from "../components/ImageComponent/ImageComponent";
 import { faEnvelope } from "@fortawesome/free-solid-svg-icons";
 import TypeIt from "typeit-react";
@@ -89,7 +89,7 @@ const IndexPage: React.FC<PageProps> = () => {
             <Col xs={0} md={0} lg={1} xl={2}></Col>
             <Col xs={12} md={6} lg={5} xl={4}>
               <h2>Work Experience</h2>
-              <TabSelector/>
+              <Tabs/>
             </Col>
             <Col xs={12} md={6} lg={5} xl={4}>
               <h2>Featured Projects</h2>

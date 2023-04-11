@@ -25,7 +25,7 @@ const jobs: Job[] = [
   {
     company: '1Password',
     title: 'Junior Developer',
-    description: 'At 1Password, I honed my React skills and learned to write high-quality, testable code with Jest. Read more about my experience in this <a href="https://blog.1password.com/internship-what-its-like/" target="_blank">1Password blog post.</a>',
+    description: 'At 1Password, I honed my React skills and learned to write high-quality, unit-tested code with Jest. Read more about my experience in this <a href="https://blog.1password.com/internship-what-its-like/" target="_blank">1Password blog post.</a>',
     startDate: 'May 2022',
     endDate: 'Aug. 2022',
     logo: onepasswordLogo,
@@ -40,7 +40,7 @@ const jobs: Job[] = [
   },
 ];
 
-const TabsSelector: React.FC = () => {
+const Tabs: React.FC = () => {
   return (
     <div className="work-history">
       {jobs.map((job, index) => (
@@ -61,4 +61,4 @@ const TabsSelector: React.FC = () => {
   );
 };
 
-export default TabsSelector;
+export default Tabs;
