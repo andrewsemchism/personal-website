@@ -15,8 +15,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGithub, faLinkedin } from "@fortawesome/free-brands-svg-icons"
 import { StaticImage } from "gatsby-plugin-image"
 import type { HeadFC, PageProps } from "gatsby"
-import Tabs from "../components/Tabs/Tabs";
-import ImageComponent from "../components/ImageComponent/ImageComponent";
+import Tabs from "../components/tabs/tabs";
+import ImageComponent from "../components/imagecomponent/imagecomponent";
 import { faEnvelope } from "@fortawesome/free-solid-svg-icons";
 import TypeIt from "typeit-react";
 
