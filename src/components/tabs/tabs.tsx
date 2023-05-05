@@ -17,9 +17,9 @@ const jobs: Job[] = [
   {
     company: 'Geotab',
     title: 'Software Developer',
-    description: 'At Geotab, I am working on MyGeotab, a web application that allows users to manage their fleet of vehicles.',
-    startDate: 'January 2023',
-    endDate: 'April 2023',
+    description: 'At Geotab, I worked on MyGeotab, a web application that allows users to manage their fleet of vehicles. I gained experience with React, TypeScript, C#, and SQL.',
+    startDate: 'Jan. 2023',
+    endDate: 'Apr. 2023',
     logo: geotabLogo,
   },
   {
