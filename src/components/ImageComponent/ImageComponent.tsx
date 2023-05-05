@@ -53,6 +53,4 @@ const ImageComponent: React.FC<Props> = ({ imageUrl, title, description, link })
   );
 };
 
-
-
 export default ImageComponent;
