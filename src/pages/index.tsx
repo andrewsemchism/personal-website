@@ -19,6 +19,48 @@ import Tabs from "../components/tabs/tabs";
 import ImageComponent from "../components/ImageComponent/ImageComponent";
 import { faEnvelope } from "@fortawesome/free-solid-svg-icons";
 import TypeIt from "typeit-react";
+import { Job } from "../components/tabs/tabs";
+import faireLogo from "../images/faire-logo.jpg"
+import geotabLogo from '../images/geotab-logo.jpg';
+import onepasswordLogo from '../images/1password-logo.png';
+import richmediaLogo from '../images/richmedia-logo.jpg';
+
+// List of jobs
+const jobs: Job[] = [
+  /*
+  {
+    company: 'Faire',
+    title: 'Frontend Developer',
+    description: '',
+    startDate: 'Sept. 2023',
+    logo: faireLogo
+  },
+  */
+  {
+    company: 'Geotab',
+    title: 'Software Developer',
+    description: 'At Geotab, I worked on MyGeotab, a web application that allows users to manage their fleet of vehicles. I gained experience with React, TypeScript, C#, and SQL.',
+    startDate: 'Jan. 2023',
+    endDate: 'Apr. 2023',
+    logo: geotabLogo,
+  },
+  {
+    company: '1Password',
+    title: 'Junior Developer',
+    description: 'At 1Password, I honed my React skills and learned to write high-quality, unit-tested code with Jest. Read more about my experience in this <a href="https://blog.1password.com/internship-what-its-like/" target="_blank">1Password blog post.</a>',
+    startDate: 'May 2022',
+    endDate: 'Aug. 2022',
+    logo: onepasswordLogo,
+  },
+  {
+    company: 'Rich Media',
+    title: 'Web Developer',
+    description: 'At Rich Media, I gained hands-on experience working with HTML, CSS, and JavaScript. I collaborated with designers to create polished, user-friendly web products.',
+    startDate: 'May 2021',
+    endDate: 'Aug. 2021',
+    logo: richmediaLogo,
+  },
+];
 
 
 const IndexPage: React.FC<PageProps> = () => {
@@ -89,7 +131,7 @@ const IndexPage: React.FC<PageProps> = () => {
             <Col xs={0} md={0} lg={1} xl={2}></Col>
             <Col xs={12} md={6} lg={5} xl={4}>
               <h2>Work Experience</h2>
-              <Tabs/>
+              <Tabs jobs={jobs}/>
             </Col>
             <Col xs={12} md={6} lg={5} xl={4}>
               <h2>Featured Projects</h2>
