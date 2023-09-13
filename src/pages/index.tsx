@@ -27,15 +27,13 @@ import richmediaLogo from '../images/richmedia-logo.jpg';
 
 // List of jobs
 const jobs: Job[] = [
-  /*
   {
     company: 'Faire',
     title: 'Frontend Developer',
-    description: '',
+    description: 'Working on <a href="https://faire.com" target="_blank">Faire.com</a>',
     startDate: 'Sept. 2023',
     logo: faireLogo
   },
-  */
   {
     company: 'Geotab',
     title: 'Software Developer',
