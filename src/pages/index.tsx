@@ -30,8 +30,9 @@ const jobs: Job[] = [
   {
     company: 'Faire',
     title: 'Frontend Developer',
-    description: 'Working on <a href="https://faire.com" target="_blank">Faire.com</a>',
+    description: 'Frontend development of <a href="https://faire.com" target="_blank">Faire.com</a> on the Brand Growth team.',
     startDate: 'Sept. 2023',
+    endDate: 'Dec. 2023',
     logo: faireLogo
   },
   {
@@ -110,7 +111,7 @@ const IndexPage: React.FC<PageProps> = () => {
                 <h2>Hi, my name is</h2>
                 <h1>Andrew Semchism</h1>
                 <h2><TypeIt>I love software engineering.</TypeIt></h2>
-                <p>I'm a third-year Computer Science student studying at the University of Waterloo.</p>
+                <p>I'm a fourth-year Computer Science student studying at the University of Waterloo. I am currently seeking an internship for Summer 2024.</p>
                 <Button variant="outline-secondary" href="#contact">Contact Me</Button>
                 <div className="icons">
                   <a href="https://github.com/andrewsemchism" target="_blank"><FontAwesomeIcon icon={faGithub} size="2xl"/></a>
