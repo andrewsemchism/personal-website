@@ -24,12 +24,20 @@ import faireLogo from "../images/faire-logo.jpg"
 import geotabLogo from '../images/geotab-logo.jpg';
 import onepasswordLogo from '../images/1password-logo.png';
 import richmediaLogo from '../images/richmedia-logo.jpg';
+import cartalogo from '../images/carta-logo.jpg';
 
 // List of jobs
 const jobs: Job[] = [
   {
+    company: 'Carta',
+    title: 'Frontend Engineer',
+    description: 'Frontend development of <a href="https://carta.com" target="_blank">Carta.com</a>. Working on equity management solutions for LLCs.',
+    startDate: 'May 2024',
+    logo: cartalogo,
+  },
+  {
     company: 'Faire',
-    title: 'Frontend Developer',
+    title: 'Frontend Engineer',
     description: 'Frontend development of <a href="https://faire.com" target="_blank">Faire.com</a> on the Brand Growth team.',
     startDate: 'Sept. 2023',
     endDate: 'Dec. 2023',
@@ -111,7 +119,7 @@ const IndexPage: React.FC<PageProps> = () => {
                 <h2>Hi, my name is</h2>
                 <h1>Andrew Semchism</h1>
                 <h2><TypeIt>I love software engineering.</TypeIt></h2>
-                <p>I'm a fourth-year Computer Science student studying at the University of Waterloo. I am currently seeking an internship for Summer 2024.</p>
+                <p>I'm a fourth-year Computer Science student studying at the University of Waterloo. I am currently seeking an internship for fall 2024.</p>
                 <Button variant="outline-secondary" href="#contact">Contact Me</Button>
                 <div className="icons">
                   <a href="https://github.com/andrewsemchism" target="_blank"><FontAwesomeIcon icon={faGithub} size="2xl"/></a>
@@ -133,7 +141,7 @@ const IndexPage: React.FC<PageProps> = () => {
               <Tabs jobs={jobs}/>
             </Col>
             <Col xs={12} md={6} lg={5} xl={4}>
-              <h2>Featured Projects</h2>
+              <h2>Featured Project</h2>
               <Container fluid>
                 <Row>
                   <Col>
@@ -144,6 +152,7 @@ const IndexPage: React.FC<PageProps> = () => {
                     link="https://beerboss.ca/"></ImageComponent>
                   </Col>
                 </Row>
+                { /* OLD PROJECTS
                 <Row>
                 <Col>
                   <ImageComponent
@@ -159,8 +168,8 @@ const IndexPage: React.FC<PageProps> = () => {
                   description="3D Printed Pi dashboard."
                   link="https://github.com/andrewsemchism/pi-lcd-dashboard"></ImageComponent>
                 </Col>
-
                 </Row>
+                */ }
               </Container>
             </Col>
             <Col xs={0} md={0} lg={1} xl={2}></Col>
