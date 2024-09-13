@@ -25,14 +25,23 @@ import geotabLogo from '../images/geotab-logo.jpg';
 import onepasswordLogo from '../images/1password-logo.png';
 import richmediaLogo from '../images/richmedia-logo.jpg';
 import cartalogo from '../images/carta-logo.jpg';
+import gemLogo from '../images/gem-logo.png';
 
 // List of jobs
 const jobs: Job[] = [
+  {
+    company: "Gem",
+    title: "Software Engineer",
+    description: "Building Gem's new ATS product!",
+    startDate: "Sept. 2024",
+    logo: gemLogo
+  },
   {
     company: 'Carta',
     title: 'Frontend Engineer',
     description: 'Frontend development of <a href="https://carta.com" target="_blank">Carta.com</a>. Working on equity management solutions for LLCs.',
     startDate: 'May 2024',
+    endDate: 'Aug. 2024',
     logo: cartalogo,
   },
   {
@@ -119,7 +128,7 @@ const IndexPage: React.FC<PageProps> = () => {
                 <h2>Hi, my name is</h2>
                 <h1>Andrew Semchism</h1>
                 <h2><TypeIt>I love software engineering.</TypeIt></h2>
-                <p>I'm a fourth-year Computer Science student studying at the University of Waterloo. I am currently seeking an internship for fall 2024.</p>
+                <p>I'm a fourth-year Computer Science student studying at the University of Waterloo.</p>
                 <Button variant="outline-secondary" href="#contact">Contact Me</Button>
                 <div className="icons">
                   <a href="https://github.com/andrewsemchism" target="_blank"><FontAwesomeIcon icon={faGithub} size="2xl"/></a>
