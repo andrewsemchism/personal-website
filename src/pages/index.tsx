@@ -34,6 +34,7 @@ const jobs: Job[] = [
     title: "Software Engineer",
     description: "Building Gem's new ATS product!",
     startDate: "Sept. 2024",
+    endDate: 'Dec. 2024',
     logo: gemLogo
   },
   {
