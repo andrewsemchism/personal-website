@@ -82,7 +82,7 @@ export default function Home() {
       {/* Navbar */}
       <nav className={`fixed top-0 left-0 right-0 bg-[#274156] z-50 ${showNavbar ? 'navbar-show' : 'navbar-hide'}`}>
         <div className="container mx-auto px-4 flex items-center justify-between h-16">
-          <div className="pl-2">
+          <div className="pl-2 pt-2">
             <Image
               src="/images/logo.svg"
               width={60}
@@ -137,8 +137,8 @@ export default function Home() {
                 <Image
                   src="/images/andrew-cartoon.png"
                   alt="Cartoon of Andrew"
-                  width={400}
-                  height={400}
+                  width={500}
+                  height={500}
                 />
               </div>
               <div className="lg:col-span-1 xl:col-span-2"></div>
