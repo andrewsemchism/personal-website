@@ -20,9 +20,9 @@ const WorkHistory: React.FC<WorkHistoryProps> = ({ jobs }) => {
   return (
     <div className="flex flex-col items-start">
       {jobs.map((job, index) => (
-        <div className="flex mb-4 items-start font-sans" key={index}>
+        <div className="flex mb-4 items-start font-sans group" key={index}>
           <div className="flex flex-col items-center relative mr-4">
-            <div className="w-[50px] h-[50px] rounded-full border-2 border-[#7796cb] overflow-hidden transition-transform hover:scale-110 hover:border-[#fbfcff]">
+            <div className="w-[50px] h-[50px] rounded-full border-2 border-[#7796cb] overflow-hidden transition-transform group-hover:scale-110 group-hover:border-[#fbfcff]">
               <Image
                 src={job.logo}
                 alt={`${job.company} logo`}
