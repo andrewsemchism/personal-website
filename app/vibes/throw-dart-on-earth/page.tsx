@@ -2,20 +2,46 @@
 
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, type MutableRefObject } from 'react';
 import * as THREE from 'three';
+import { LAND_POINTS, type LandPoint } from './land-points';
 
 type DartState = 'ready' | 'flying' | 'landed';
 
 interface Results {
   latitude: number;
   longitude: number;
+  city: string;
   country: string;
 }
 
 interface LandedDart {
   localPosition: THREE.Vector3;
   localQuaternion: THREE.Quaternion;
+}
+
+interface ThrowData {
+  city: LandPoint;
+  localPoint: THREE.Vector3;
+  startRotationY: number;
+  endRotationY: number;
+  landingWorldPos: THREE.Vector3;
+}
+
+const GLOBE_RADIUS = 1.5;
+const EXTRA_SPINS = 3;
+
+function latLngToSpherePosition(lat: number, lng: number, radius: number): THREE.Vector3 {
+  const latRad = lat * (Math.PI / 180);
+  const lngRad = lng * (Math.PI / 180);
+  const y = radius * Math.sin(latRad);
+  const x = radius * Math.cos(latRad) * Math.cos(lngRad);
+  const z = -radius * Math.cos(latRad) * Math.sin(lngRad);
+  return new THREE.Vector3(x, y, z);
+}
+
+function computeTargetRotationY(localPoint: THREE.Vector3): number {
+  return -Math.atan2(localPoint.x, localPoint.z);
 }
 
 function DartModel({ scale = 1 }: { scale?: number }) {
@@ -78,9 +104,11 @@ function DartModel({ scale = 1 }: { scale?: number }) {
 function FlyingDart({
   landingWorldPos,
   onLanded,
+  flightProgressRef,
 }: {
   landingWorldPos: THREE.Vector3;
   onLanded: () => void;
+  flightProgressRef: MutableRefObject<number>;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const progressRef = useRef(0);
@@ -90,11 +118,15 @@ function FlyingDart({
   useFrame((_state, delta) => {
     if (!groupRef.current || landedRef.current) return;
 
-    progressRef.current = Math.min(progressRef.current + delta * 1.2, 1);
+    progressRef.current = Math.min(progressRef.current + delta * 0.6, 1);
     const t = progressRef.current;
+
+    // Share progress with Globe via shared ref
+    flightProgressRef.current = t;
 
     if (t >= 1) {
       landedRef.current = true;
+      flightProgressRef.current = 1;
       onLanded();
       return;
     }
@@ -142,38 +174,50 @@ function FlyingDart({
 
 function Globe({
   dartState,
-  landingWorldPos,
-  onLanded,
+  throwData,
   onEarthRef,
   landedDarts,
+  flightProgressRef,
 }: {
   dartState: DartState;
-  landingWorldPos: THREE.Vector3 | null;
-  onLanded: () => void;
+  throwData: ThrowData | null;
   onEarthRef: (ref: THREE.Group) => void;
   landedDarts: LandedDart[];
+  flightProgressRef: MutableRefObject<number>;
 }) {
   const earthRef = useRef<THREE.Group>(null);
   const texture = useTexture('/textures/earth-day.jpg');
   const refSent = useRef(false);
 
   useFrame(() => {
-    if (earthRef.current) {
-      // Only rotate when not landed (so dart stays put visually while showing results)
-      if (dartState !== 'landed') {
-        earthRef.current.rotation.y += 0.025;
-      }
-      if (!refSent.current) {
-        onEarthRef(earthRef.current);
-        refSent.current = true;
-      }
+    if (!earthRef.current) return;
+
+    if (!refSent.current) {
+      onEarthRef(earthRef.current);
+      refSent.current = true;
     }
+
+    if (dartState === 'ready') {
+      // Idle spin
+      earthRef.current.rotation.y += 0.025;
+    } else if (dartState === 'flying' && throwData) {
+      // Dramatic spin synchronized with dart flight
+      const t = flightProgressRef.current;
+      // Ease in-out matching the dart
+      const easedT = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+      const startY = throwData.startRotationY;
+      const endY = throwData.endRotationY;
+
+      earthRef.current.rotation.y = startY + (endY - startY) * easedT;
+    }
+    // 'landed': don't rotate, globe stays where it stopped
   });
 
   return (
     <group ref={earthRef}>
       <mesh>
-        <sphereGeometry args={[1.5, 64, 64]} />
+        <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
         <meshStandardMaterial map={texture} />
       </mesh>
 
@@ -193,37 +237,40 @@ function Globe({
 
 function Scene({
   dartState,
-  landingWorldPos,
+  throwData,
   onLanded,
   onEarthRef,
   throwKey,
   landedDarts,
+  flightProgressRef,
 }: {
   dartState: DartState;
-  landingWorldPos: THREE.Vector3 | null;
+  throwData: ThrowData | null;
   onLanded: () => void;
   onEarthRef: (ref: THREE.Group) => void;
   throwKey: number;
   landedDarts: LandedDart[];
+  flightProgressRef: MutableRefObject<number>;
 }) {
   return (
     <>
-      <ambientLight intensity={1.2} />
-      <directionalLight position={[5, 3, 5]} intensity={2} />
+      <ambientLight intensity={1.8} />
+      <directionalLight position={[5, 3, 5]} intensity={2.5} />
       <pointLight position={[10, 10, 10]} intensity={1.5} />
       <pointLight position={[-10, -10, -10]} intensity={0.8} />
       <Globe
         dartState={dartState}
-        landingWorldPos={landingWorldPos}
-        onLanded={onLanded}
+        throwData={throwData}
         onEarthRef={onEarthRef}
         landedDarts={landedDarts}
+        flightProgressRef={flightProgressRef}
       />
-      {dartState === 'flying' && landingWorldPos && (
+      {dartState === 'flying' && throwData && (
         <FlyingDart
           key={throwKey}
-          landingWorldPos={landingWorldPos}
+          landingWorldPos={throwData.landingWorldPos}
           onLanded={onLanded}
+          flightProgressRef={flightProgressRef}
         />
       )}
     </>
@@ -232,76 +279,70 @@ function Scene({
 
 export default function ThrowDartPage() {
   const [dartState, setDartState] = useState<DartState>('ready');
-  const [landingWorldPos, setLandingWorldPos] = useState<THREE.Vector3 | null>(
-    null
-  );
+  const [throwData, setThrowData] = useState<ThrowData | null>(null);
   const [results, setResults] = useState<Results | null>(null);
-  const [isLoadingCountry, setIsLoadingCountry] = useState(false);
   const [throwKey, setThrowKey] = useState(0);
   const [landedDarts, setLandedDarts] = useState<LandedDart[]>([]);
   const earthRefState = useRef<THREE.Group | null>(null);
+  const flightProgressRef = useRef(0);
 
   const handleEarthRef = useCallback((ref: THREE.Group) => {
     earthRefState.current = ref;
   }, []);
 
-  const generateLandingPoint = (): THREE.Vector3 => {
-    const radius = 1.5;
-    // Random latitude (y position on the sphere)
-    const y = (Math.random() - 0.5) * 2 * radius * 0.9; // Stay away from poles
-    // Always land on the front-facing meridian (x=0, z>0)
-    const z = Math.sqrt(radius * radius - y * y);
-    return new THREE.Vector3(0, y, z);
-  };
-
-  const cartesianToLatLong = (
-    point: THREE.Vector3
-  ): { lat: number; long: number } => {
-    const r = 1.5;
-    const normalized = point.clone().divideScalar(r);
-
-    // latitude from y
-    const lat = Math.asin(THREE.MathUtils.clamp(normalized.y, -1, 1)) * (180 / Math.PI);
-    // longitude: Three.js SphereGeometry maps +X to 0° lon, +Z to -90°, -X to 180°
-    const long = Math.atan2(-normalized.z, normalized.x) * (180 / Math.PI);
-
-    return { lat, long };
-  };
-
-  const fetchCountry = async (lat: number, long: number): Promise<string> => {
-    try {
-      const response = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${long}&localityLanguage=en`
-      );
-      if (!response.ok) return 'Unknown location';
-      const data = await response.json();
-      if (data.countryName) return data.countryName;
-      if (data.ocean) return `${data.ocean} Ocean`;
-      return 'Unknown location';
-    } catch {
-      return 'Unknown location';
-    }
-  };
-
   const handleThrow = () => {
-    const worldPoint = generateLandingPoint();
-    setLandingWorldPos(worldPoint);
+    // Pick a random city
+    const city = LAND_POINTS[Math.floor(Math.random() * LAND_POINTS.length)];
+
+    // Compute the local position on the sphere for this city
+    const localPoint = latLngToSpherePosition(city.lat, city.lng, GLOBE_RADIUS);
+
+    // Compute the target rotation so the city faces the camera (+Z)
+    const rawTarget = computeTargetRotationY(localPoint);
+
+    // Capture the current globe rotation
+    const startRotationY = earthRefState.current
+      ? earthRefState.current.rotation.y
+      : 0;
+
+    // Ensure we always spin forward from current position
+    let forwardDelta = (rawTarget - startRotationY) % (2 * Math.PI);
+    if (forwardDelta <= 0) forwardDelta += 2 * Math.PI;
+    const endRotationY =
+      startRotationY + forwardDelta + EXTRA_SPINS * 2 * Math.PI;
+
+    // The dart always lands on the front of the globe (the point facing camera after rotation)
+    // After rotation, the local point will be at the front, so we compute where that is in world space
+    // The landing world position is simply the front of the globe at the correct height
+    const localNorm = localPoint.clone().normalize();
+    const landingWorldY = localNorm.y * GLOBE_RADIUS;
+    const landingWorldZ = Math.sqrt(
+      GLOBE_RADIUS * GLOBE_RADIUS - landingWorldY * landingWorldY
+    );
+    const landingWorldPos = new THREE.Vector3(0, landingWorldY, landingWorldZ);
+
+    flightProgressRef.current = 0;
+
+    setThrowData({
+      city,
+      localPoint,
+      startRotationY,
+      endRotationY,
+      landingWorldPos,
+    });
     setDartState('flying');
     setResults(null);
     setThrowKey((prev) => prev + 1);
   };
 
-  const handleLanded = async () => {
+  const handleLanded = () => {
     setDartState('landed');
 
-    if (landingWorldPos && earthRefState.current) {
-      const earth = earthRefState.current;
-
-      // Convert world landing position to earth-local space
-      const localPos = earth.worldToLocal(landingWorldPos.clone());
+    if (throwData && earthRefState.current) {
+      const localPoint = throwData.localPoint;
 
       // Orient dart so +X (tip) points toward center (inward)
-      const outward = localPos.clone().normalize();
+      const outward = localPoint.clone().normalize();
       const inward = outward.clone().negate();
       const quat = new THREE.Quaternion().setFromUnitVectors(
         new THREE.Vector3(1, 0, 0),
@@ -309,8 +350,7 @@ export default function ThrowDartPage() {
       );
 
       // Position: tip at surface, dart body sticking out
-      // Offset outward so most of the dart is above the surface
-      const surfacePoint = outward.clone().multiplyScalar(1.5);
+      const surfacePoint = outward.clone().multiplyScalar(GLOBE_RADIUS);
       const dartOffset = outward.clone().multiplyScalar(0.18);
       const finalPos = surfacePoint.add(dartOffset);
 
@@ -319,26 +359,19 @@ export default function ThrowDartPage() {
         { localPosition: finalPos, localQuaternion: quat },
       ]);
 
-      // Compute geographic coordinates from the local position on sphere
-      const { lat, long } = cartesianToLatLong(localPos);
-
-      setIsLoadingCountry(true);
-      const country = await fetchCountry(lat, long);
-      setIsLoadingCountry(false);
-
       setResults({
-        latitude: lat,
-        longitude: long,
-        country,
+        latitude: throwData.city.lat,
+        longitude: throwData.city.lng,
+        city: throwData.city.name,
+        country: throwData.city.country,
       });
     }
   };
 
   const handleReset = () => {
     setDartState('ready');
-    setLandingWorldPos(null);
+    setThrowData(null);
     setResults(null);
-    setIsLoadingCountry(false);
   };
 
   return (
@@ -346,11 +379,12 @@ export default function ThrowDartPage() {
       <Canvas camera={{ position: [0, 0, 5], fov: 50 }}>
         <Scene
           dartState={dartState}
-          landingWorldPos={landingWorldPos}
+          throwData={throwData}
           onLanded={handleLanded}
           onEarthRef={handleEarthRef}
           throwKey={throwKey}
           landedDarts={landedDarts}
+          flightProgressRef={flightProgressRef}
         />
       </Canvas>
 
@@ -362,7 +396,7 @@ export default function ThrowDartPage() {
               Throw Dart on Earth
             </h1>
             <p className="text-[#888e9e] font-sans text-lg mt-2">
-              Throw a virtual dart at the spinning globe
+              Randomly land on one of 391 cities across the globe
             </p>
           </div>
 
@@ -386,21 +420,21 @@ export default function ThrowDartPage() {
 
                 <div className="space-y-3">
                   <div>
+                    <span className="text-[#888e9e] font-sans">Location: </span>
+                    <span className="text-[#fbfcff] font-sans font-semibold">
+                      {results.city}, {results.country}
+                    </span>
+                  </div>
+                  <div>
                     <span className="text-[#888e9e] font-sans">Latitude: </span>
                     <span className="text-[#fbfcff] font-sans font-mono">
-                      {results.latitude.toFixed(4)}°
+                      {results.latitude.toFixed(4)}&deg;
                     </span>
                   </div>
                   <div>
                     <span className="text-[#888e9e] font-sans">Longitude: </span>
                     <span className="text-[#fbfcff] font-sans font-mono">
-                      {results.longitude.toFixed(4)}°
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[#888e9e] font-sans">Location: </span>
-                    <span className="text-[#fbfcff] font-sans">
-                      {isLoadingCountry ? 'Calculating...' : results.country}
+                      {results.longitude.toFixed(4)}&deg;
                     </span>
                   </div>
                 </div>
