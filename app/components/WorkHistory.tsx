@@ -38,10 +38,10 @@ const WorkHistory: React.FC<WorkHistoryProps> = ({ jobs }) => {
             )}
           </div>
           <div className="flex flex-col items-start text-base text-[#888e9e]">
-            <h3 className="text-xl m-0">{job.title}</h3>
-            <p className="m-0 font-bold">{job.startDate} - {job.endDate ?? "Present"}</p>
-            <p className="m-0 italic">{job.company}</p>
-            <p className="m-0" dangerouslySetInnerHTML={{ __html: job.description }}></p>
+            <h3 className="text-[1.3rem] m-0">{job.title}</h3>
+            <p className="m-0 font-bold text-base">{job.startDate} - {job.endDate ?? "Present"}</p>
+            <p className="m-0 italic text-base">{job.company}</p>
+            <p className="m-0 text-base" dangerouslySetInnerHTML={{ __html: job.description }}></p>
           </div>
         </div>
       ))}

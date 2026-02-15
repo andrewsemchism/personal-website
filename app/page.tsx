@@ -82,7 +82,7 @@ export default function Home() {
       {/* Navbar */}
       <nav className={`fixed top-0 left-0 right-0 bg-[#274156] z-50 ${showNavbar ? 'navbar-show' : 'navbar-hide'}`}>
         <div className="container mx-auto px-4 flex items-center justify-between h-16">
-          <div className="pl-8">
+          <div className="pl-2">
             <Image
               src="/images/logo.svg"
               width={60}
@@ -109,17 +109,17 @@ export default function Home() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               <div className="lg:col-span-1 xl:col-span-2"></div>
               <div className="lg:col-span-7 xl:col-span-6 mt-10 p-2.5">
-                <h2 className="text-[#d0ccd0] font-mono">Hi, my name is</h2>
-                <h1 className="text-[#fbfcff] font-sans font-bold text-[38px] sm:text-[54px]">
+                <h2 className="text-[#d0ccd0] font-mono text-xl">Hi, my name is</h2>
+                <h1 className="text-[#fbfcff] font-sans font-bold text-[42px] sm:text-[60px]">
                   Andrew Semchism
                 </h1>
-                <h2 className="text-[#d0ccd0] font-mono">
+                <h2 className="text-[#d0ccd0] font-mono text-xl">
                   <TypeIt>I love software engineering.</TypeIt>
                 </h2>
-                <p className="text-[#888e9e] font-sans">
+                <p className="text-[#888e9e] font-sans text-lg">
                   I'm a fourth-year Computer Science student studying at the University of Waterloo.
                 </p>
-                <a href="#contact">
+                <a href="#contact" className="inline-block mt-6">
                   <button className="font-mono text-[#888e9e] border border-[#888e9e] bg-transparent px-4 py-2 rounded hover:bg-[#888e9e]/10 transition-colors">
                     Contact Me
                   </button>
@@ -152,11 +152,11 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
               <div className="md:col-span-1 xl:col-span-2"></div>
               <div className="md:col-span-5 xl:col-span-4">
-                <h2 className="text-[#d0ccd0] font-mono mb-3.5">Work Experience</h2>
+                <h2 className="text-[#d0ccd0] font-mono mb-3.5 text-xl">Work Experience</h2>
                 <WorkHistory jobs={jobs} />
               </div>
               <div className="md:col-span-5 xl:col-span-4">
-                <h2 className="text-[#d0ccd0] font-mono mb-3.5">Featured Project</h2>
+                <h2 className="text-[#d0ccd0] font-mono mb-3.5 text-xl">Featured Project</h2>
                 <ProjectCard
                   imageUrl="/images/beerboss.png"
                   title="BeerBoss.ca"
@@ -170,13 +170,13 @@ export default function Home() {
         </section>
 
         {/* Contact Section */}
-        <section id="contact" className="min-h-[50vh] flex items-center">
+        <section id="contact" className="min-h-[50vh] flex items-center pt-8">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
               <div className="md:col-span-1 xl:col-span-2"></div>
               <div className="md:col-span-5 xl:col-span-4">
-                <h2 className="text-[#d0ccd0] font-mono mb-3.5">Get In Touch</h2>
-                <p className="text-[#888e9e] font-sans">
+                <h2 className="text-[#d0ccd0] font-mono mb-3.5 text-xl">Get In Touch</h2>
+                <p className="text-[#888e9e] font-sans text-lg">
                   Thank you for visiting my site. If you're interested in learning more about my experience as a software developer or UWaterloo Computer Science student, please don't hesitate to reach out to me via email at andrewsemchism@gmail.com.
                 </p>
                 <div className="pt-5 text-[#888e9e]">
