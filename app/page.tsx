@@ -11,6 +11,14 @@ import ProjectCard from './components/ProjectCard';
 
 const jobs: Job[] = [
   {
+    company: 'Carta',
+    title: 'Software Engineer II',
+    description: 'Building beautiful frontend infrastructure.',
+    startDate: 'July 2025',
+    endDate: 'Present',
+    logo: '/images/carta-logo.jpg',
+  },
+  {
     company: 'Gem',
     title: 'Software Engineer',
     description: "Building Gem's new ATS product!",
@@ -113,13 +121,13 @@ export default function Home() {
                 <h1 className="text-[#fbfcff] font-sans font-bold text-[42px] sm:text-[60px]">
                   Andrew Semchism
                 </h1>
-                <h2 className="text-[#d0ccd0] font-mono text-2xl">
+                <h2 className="text-[#d0ccd0] font-mono text-2xl mb-2">
                   <TypeIt>I love software engineering.</TypeIt>
                 </h2>
                 <p className="text-[#888e9e] font-sans text-lg">
-                  I'm a fourth-year Computer Science student studying at the University of Waterloo.
+                  Right now I'm on the Frontend Platform team at Carta, diving into frontend infrastructure: module federation, micro-frontends, build tools, monorepos, testing, CI, and whatever new Claude Code feature dropped this week.
                 </p>
-                <a href="#contact" className="inline-block mt-6">
+                <a href="#contact" className="inline-block mt-4">
                   <button className="font-mono text-[#888e9e] border border-[#888e9e] bg-transparent px-4 py-2 rounded hover:bg-[#888e9e]/10 transition-colors">
                     Contact Me
                   </button>
