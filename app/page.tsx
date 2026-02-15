@@ -178,7 +178,7 @@ export default function Home() {
         </section>
 
         {/* Contact Section */}
-        <section id="contact" className="min-h-[30vh] flex items-center pt-8">
+        <section id="contact" className="min-h-[30vh] flex items-center py-16">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
               <div className="md:col-span-1"></div>
