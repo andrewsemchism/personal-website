@@ -115,8 +115,8 @@ export default function Home() {
         <section className="min-h-screen flex items-center">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-1 xl:col-span-2"></div>
-              <div className="lg:col-span-7 xl:col-span-6 mt-10 p-2.5">
+              <div className="lg:col-span-1"></div>
+              <div className="lg:col-span-7 xl:col-span-7 mt-10 p-2.5">
                 <h2 className="text-[#d0ccd0] font-mono text-xl">Hi, my name is</h2>
                 <h1 className="text-[#fbfcff] font-sans font-bold text-[42px] sm:text-[60px]">
                   Andrew Semchism
@@ -141,7 +141,7 @@ export default function Home() {
                   </a>
                 </div>
               </div>
-              <div className="hidden md:block lg:col-span-3 xl:col-span-2">
+              <div className="hidden md:block lg:col-span-3">
                 <Image
                   src="/images/andrew-cartoon.png"
                   alt="Cartoon of Andrew"
@@ -149,7 +149,7 @@ export default function Home() {
                   height={500}
                 />
               </div>
-              <div className="lg:col-span-1 xl:col-span-2"></div>
+              <div className="lg:col-span-1"></div>
             </div>
           </div>
         </section>
@@ -158,12 +158,12 @@ export default function Home() {
         <section id="experience" className="min-h-[60vh]">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-              <div className="md:col-span-1 xl:col-span-2"></div>
-              <div className="md:col-span-5 xl:col-span-4">
+              <div className="md:col-span-1"></div>
+              <div className="md:col-span-5">
                 <h2 className="text-[#d0ccd0] font-mono mb-3.5 text-xl">Work Experience</h2>
                 <WorkHistory jobs={jobs} />
               </div>
-              <div className="md:col-span-5 xl:col-span-4">
+              <div className="md:col-span-5">
                 <h2 className="text-[#d0ccd0] font-mono mb-3.5 text-xl">Featured Project</h2>
                 <ProjectCard
                   imageUrl="/images/beerboss.png"
@@ -172,7 +172,7 @@ export default function Home() {
                   link="https://beerboss.ca/"
                 />
               </div>
-              <div className="md:col-span-1 xl:col-span-2"></div>
+              <div className="md:col-span-1"></div>
             </div>
           </div>
         </section>
@@ -181,8 +181,8 @@ export default function Home() {
         <section id="contact" className="min-h-[30vh] flex items-center pt-8">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-              <div className="md:col-span-1 xl:col-span-2"></div>
-              <div className="md:col-span-5 xl:col-span-4">
+              <div className="md:col-span-1"></div>
+              <div className="md:col-span-5">
                 <h2 className="text-[#d0ccd0] font-mono mb-3.5 text-xl">Get In Touch</h2>
                 <p className="text-[#888e9e] font-sans text-lg">
                   Thank you for visiting my site. If you're interested in learning more about my experience as a software developer or UWaterloo Computer Science student, please don't hesitate to reach out to me via email at andrewsemchism@gmail.com.
@@ -196,8 +196,8 @@ export default function Home() {
                   </a>
                 </div>
               </div>
-              <div className="md:col-span-5 xl:col-span-4"></div>
-              <div className="md:col-span-1 xl:col-span-2"></div>
+              <div className="md:col-span-5"></div>
+              <div className="md:col-span-1"></div>
             </div>
           </div>
         </section>
