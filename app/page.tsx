@@ -1,64 +1,198 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faGithub, faLinkedin } from '@fortawesome/free-brands-svg-icons';
+import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import TypeIt from 'typeit-react';
+import WorkHistory, { Job } from './components/WorkHistory';
+import ProjectCard from './components/ProjectCard';
+
+const jobs: Job[] = [
+  {
+    company: 'Gem',
+    title: 'Software Engineer',
+    description: "Building Gem's new ATS product!",
+    startDate: 'Sept. 2024',
+    endDate: 'Dec. 2024',
+    logo: '/images/gem-logo.png',
+  },
+  {
+    company: 'Carta',
+    title: 'Frontend Engineer',
+    description: 'Frontend development of <a href="https://carta.com" target="_blank">Carta.com</a>. Working on equity management solutions for LLCs.',
+    startDate: 'May 2024',
+    endDate: 'Aug. 2024',
+    logo: '/images/carta-logo.jpg',
+  },
+  {
+    company: 'Faire',
+    title: 'Frontend Engineer',
+    description: 'Frontend development of <a href="https://faire.com" target="_blank">Faire.com</a> on the Brand Growth team.',
+    startDate: 'Sept. 2023',
+    endDate: 'Dec. 2023',
+    logo: '/images/faire-logo.jpg',
+  },
+  {
+    company: 'Geotab',
+    title: 'Software Developer',
+    description: 'At Geotab, I worked on MyGeotab, a web application that allows users to manage their fleet of vehicles. I gained experience with React, TypeScript, C#, and SQL.',
+    startDate: 'Jan. 2023',
+    endDate: 'Apr. 2023',
+    logo: '/images/geotab-logo.jpg',
+  },
+  {
+    company: '1Password',
+    title: 'Junior Developer',
+    description: 'At 1Password, I honed my React skills and learned to write high-quality, unit-tested code with Jest. Read more about my experience in this <a href="https://blog.1password.com/internship-what-its-like/" target="_blank">1Password blog post.</a>',
+    startDate: 'May 2022',
+    endDate: 'Aug. 2022',
+    logo: '/images/1password-logo.png',
+  },
+  {
+    company: 'Rich Media',
+    title: 'Web Developer',
+    description: 'At Rich Media, I gained hands-on experience working with HTML, CSS, and JavaScript. I collaborated with designers to create polished, user-friendly web products.',
+    startDate: 'May 2021',
+    endDate: 'Aug. 2021',
+    logo: '/images/richmedia-logo.jpg',
+  },
+];
 
 export default function Home() {
+  const [showNavbar, setShowNavbar] = useState(true);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollPosition = window.pageYOffset;
+      if (currentScrollPosition > 250) {
+        setShowNavbar(false);
+      } else {
+        setShowNavbar(true);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+    <div>
+      {/* Navbar */}
+      <nav className={`fixed top-0 left-0 right-0 bg-[#274156] z-50 ${showNavbar ? 'navbar-show' : 'navbar-hide'}`}>
+        <div className="container mx-auto px-4 flex items-center justify-between h-16">
+          <div className="pl-8">
             <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+              src="/images/logo.svg"
+              width={60}
+              height={60}
+              className="inline-block align-top"
+              alt="Logo"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+          <div className="flex gap-10 pr-8">
+            <a href="#experience" className="text-[#7796cb] font-sans text-lg font-medium hover:text-[#fbfcff]">
+              EXPERIENCE
+            </a>
+            <a href="#contact" className="text-[#7796cb] font-sans text-lg font-medium hover:text-[#fbfcff]">
+              CONTACT
+            </a>
+          </div>
         </div>
+      </nav>
+
+      <main>
+        {/* Title Section */}
+        <section className="min-h-screen flex items-center">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div className="lg:col-span-1 xl:col-span-2"></div>
+              <div className="lg:col-span-7 xl:col-span-6 mt-10 p-2.5">
+                <h2 className="text-[#d0ccd0] font-mono">Hi, my name is</h2>
+                <h1 className="text-[#fbfcff] font-sans font-bold text-[38px] sm:text-[54px]">
+                  Andrew Semchism
+                </h1>
+                <h2 className="text-[#d0ccd0] font-mono">
+                  <TypeIt>I love software engineering.</TypeIt>
+                </h2>
+                <p className="text-[#888e9e] font-sans">
+                  I'm a fourth-year Computer Science student studying at the University of Waterloo.
+                </p>
+                <a href="#contact">
+                  <button className="font-mono text-[#888e9e] border border-[#888e9e] bg-transparent px-4 py-2 rounded hover:bg-[#888e9e]/10 transition-colors">
+                    Contact Me
+                  </button>
+                </a>
+                <div className="pt-5 text-[#888e9e]">
+                  <a href="https://github.com/andrewsemchism" target="_blank" rel="noopener noreferrer" className="inline-block pr-3.5 hover:-translate-y-1 transition-transform">
+                    <FontAwesomeIcon icon={faGithub} size="2xl" />
+                  </a>
+                  <a href="https://linkedin.com/in/andrew-semchism-11a56a1a4" target="_blank" rel="noopener noreferrer" className="inline-block hover:-translate-y-1 transition-transform">
+                    <FontAwesomeIcon icon={faLinkedin} size="2xl" />
+                  </a>
+                </div>
+              </div>
+              <div className="hidden md:block lg:col-span-3 xl:col-span-2">
+                <Image
+                  src="/images/andrew-cartoon.png"
+                  alt="Cartoon of Andrew"
+                  width={400}
+                  height={400}
+                />
+              </div>
+              <div className="lg:col-span-1 xl:col-span-2"></div>
+            </div>
+          </div>
+        </section>
+
+        {/* Experience Section */}
+        <section id="experience" className="min-h-[90vh]">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+              <div className="md:col-span-1 xl:col-span-2"></div>
+              <div className="md:col-span-5 xl:col-span-4">
+                <h2 className="text-[#d0ccd0] font-mono mb-3.5">Work Experience</h2>
+                <WorkHistory jobs={jobs} />
+              </div>
+              <div className="md:col-span-5 xl:col-span-4">
+                <h2 className="text-[#d0ccd0] font-mono mb-3.5">Featured Project</h2>
+                <ProjectCard
+                  imageUrl="/images/beerboss.png"
+                  title="BeerBoss.ca"
+                  description="Ontario Beer Store price optimization."
+                  link="https://beerboss.ca/"
+                />
+              </div>
+              <div className="md:col-span-1 xl:col-span-2"></div>
+            </div>
+          </div>
+        </section>
+
+        {/* Contact Section */}
+        <section id="contact" className="min-h-[50vh] flex items-center">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+              <div className="md:col-span-1 xl:col-span-2"></div>
+              <div className="md:col-span-5 xl:col-span-4">
+                <h2 className="text-[#d0ccd0] font-mono mb-3.5">Get In Touch</h2>
+                <p className="text-[#888e9e] font-sans">
+                  Thank you for visiting my site. If you're interested in learning more about my experience as a software developer or UWaterloo Computer Science student, please don't hesitate to reach out to me via email at andrewsemchism@gmail.com.
+                </p>
+                <div className="pt-5 text-[#888e9e]">
+                  <a href="https://linkedin.com/in/andrew-semchism-11a56a1a4" target="_blank" rel="noopener noreferrer" className="inline-block pr-3.5 hover:-translate-y-1 transition-transform">
+                    <FontAwesomeIcon icon={faLinkedin} size="2xl" />
+                  </a>
+                  <a href="mailto:andrewsemchism@gmail.com" target="_blank" rel="noopener noreferrer" className="inline-block hover:-translate-y-1 transition-transform">
+                    <FontAwesomeIcon icon={faEnvelope} size="2xl" />
+                  </a>
+                </div>
+              </div>
+              <div className="md:col-span-5 xl:col-span-4"></div>
+              <div className="md:col-span-1 xl:col-span-2"></div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
