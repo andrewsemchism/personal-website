@@ -81,8 +81,8 @@ export default function Home() {
     <div>
       {/* Navbar */}
       <nav className={`fixed top-0 left-0 right-0 bg-[#274156] z-50 ${showNavbar ? 'navbar-show' : 'navbar-hide'}`}>
-        <div className="container mx-auto px-4 flex items-center justify-between h-16">
-          <div className="pl-2 pt-2">
+        <div className="flex items-center justify-between h-[84px] px-4">
+          <div className="pl-6 pt-2">
             <Image
               src="/images/logo.svg"
               width={60}
@@ -92,10 +92,10 @@ export default function Home() {
             />
           </div>
           <div className="flex gap-10 pr-8">
-            <a href="#experience" className="text-[#7796cb] font-sans text-lg font-medium hover:text-[#fbfcff]">
+            <a href="#experience" className="text-[#7796cb] font-sans text-lg font-medium hover:text-[#fbfcff] no-underline">
               EXPERIENCE
             </a>
-            <a href="#contact" className="text-[#7796cb] font-sans text-lg font-medium hover:text-[#fbfcff]">
+            <a href="#contact" className="text-[#7796cb] font-sans text-lg font-medium hover:text-[#fbfcff] no-underline">
               CONTACT
             </a>
           </div>
@@ -113,7 +113,7 @@ export default function Home() {
                 <h1 className="text-[#fbfcff] font-sans font-bold text-[42px] sm:text-[60px]">
                   Andrew Semchism
                 </h1>
-                <h2 className="text-[#d0ccd0] font-mono text-xl">
+                <h2 className="text-[#d0ccd0] font-mono text-2xl">
                   <TypeIt>I love software engineering.</TypeIt>
                 </h2>
                 <p className="text-[#888e9e] font-sans text-lg">
@@ -147,7 +147,7 @@ export default function Home() {
         </section>
 
         {/* Experience Section */}
-        <section id="experience" className="min-h-[90vh]">
+        <section id="experience" className="min-h-[60vh]">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
               <div className="md:col-span-1 xl:col-span-2"></div>
@@ -170,7 +170,7 @@ export default function Home() {
         </section>
 
         {/* Contact Section */}
-        <section id="contact" className="min-h-[50vh] flex items-center pt-8">
+        <section id="contact" className="min-h-[30vh] flex items-center pt-8">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
               <div className="md:col-span-1 xl:col-span-2"></div>

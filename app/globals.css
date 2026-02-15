@@ -28,11 +28,17 @@ html {
   transition: opacity 0.3s ease-in-out;
 }
 
-a {
+/* Navigation links should maintain their specified colors */
+nav a {
+  text-decoration: none;
+}
+
+/* Default link styles for content areas */
+main a {
   color: #888e9e;
   text-decoration: none;
 }
 
-a:hover {
+main a:hover {
   color: #fbfcff;
 }
