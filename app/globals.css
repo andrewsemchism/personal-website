@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-roboto-mono);
+}
+
+body {
+  background-color: #274156;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Navbar transition styles */
+.navbar-show {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.navbar-hide {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* Navigation links should maintain their specified colors */
+nav a {
+  text-decoration: none;
+}
+
+/* Default link styles for content areas */
+main a {
+  color: #888e9e;
+  text-decoration: none;
+}
+
+main a:hover {
+  color: #fbfcff;
+}
