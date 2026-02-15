@@ -125,7 +125,7 @@ export default function Home() {
                   <TypeIt>I love software engineering.</TypeIt>
                 </h2>
                 <p className="text-[#888e9e] font-sans text-lg">
-                  Right now I'm on the Frontend Platform team at Carta, diving into frontend infrastructure: module federation, micro-frontends, build tools, monorepos, testing, CI, and whatever new Claude Code feature dropped this week.
+                  I'm currently on the Frontend Platform team at Carta, diving into frontend infrastructure: module federation, micro-frontends, build tools, monorepos, testing, CI, and whatever new Claude Code feature dropped this week.
                 </p>
                 <a href="#contact" className="inline-block mt-4">
                   <button className="font-mono text-[#888e9e] border border-[#888e9e] bg-transparent px-4 py-2 rounded hover:bg-[#888e9e]/10 transition-colors">
