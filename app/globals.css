@@ -42,3 +42,16 @@ main a {
 main a:hover {
   color: #fbfcff;
 }
+
+@keyframes wiggle {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX(8px); }
+  60%       { transform: translateX(-6px); }
+  80%       { transform: translateX(6px); }
+}
+
+@keyframes charIn {
+  from { opacity: 0.4; transform: scale(0.85); }
+  to   { opacity: 1;   transform: scale(1); }
+}

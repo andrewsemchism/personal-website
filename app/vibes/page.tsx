@@ -18,6 +18,11 @@ export default function Vibes() {
               Throw Dart on Earth
             </Link>
           </div>
+          <div>
+            <Link href="/vibes/typing-game" className="text-[#7796cb] font-sans text-lg hover:text-[#fbfcff] no-underline">
+              Typing Game
+            </Link>
+          </div>
         </div>
       </div>
     </div>
