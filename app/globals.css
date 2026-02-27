@@ -43,6 +43,24 @@ main a:hover {
   color: #fbfcff;
 }
 
+/* Blog prose: fix pre > code double-styling */
+.blog-prose pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Blog prose: override global main a color */
+.blog-prose a {
+  color: #7796cb;
+  text-decoration: none;
+}
+
+.blog-prose a:hover {
+  color: #fbfcff;
+}
+
 @keyframes wiggle {
   0%, 100% { transform: translateX(0); }
   20%       { transform: translateX(-8px); }

@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faLinkedin } from '@fortawesome/free-brands-svg-icons';
@@ -8,6 +7,7 @@ import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import TypeIt from 'typeit-react';
 import WorkHistory, { Job } from './components/WorkHistory';
 import ProjectCard from './components/ProjectCard';
+import Navbar from './components/Navbar';
 
 const jobs: Job[] = [
   {
@@ -69,46 +69,9 @@ const jobs: Job[] = [
 ];
 
 export default function Home() {
-  const [showNavbar, setShowNavbar] = useState(true);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollPosition = window.pageYOffset;
-      if (currentScrollPosition > 250) {
-        setShowNavbar(false);
-      } else {
-        setShowNavbar(true);
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   return (
     <div>
-      {/* Navbar */}
-      <nav className={`fixed top-0 left-0 right-0 bg-[#274156] z-50 ${showNavbar ? 'navbar-show' : 'navbar-hide'}`}>
-        <div className="flex items-center justify-between h-[84px] px-4">
-          <div className="pl-6 pt-2">
-            <Image
-              src="/images/logo.svg"
-              width={60}
-              height={60}
-              className="inline-block align-top"
-              alt="Logo"
-            />
-          </div>
-          <div className="flex gap-10 pr-8">
-            <a href="#experience" className="text-[#7796cb] font-sans text-lg font-medium hover:text-[#fbfcff] no-underline">
-              EXPERIENCE
-            </a>
-            <a href="#contact" className="text-[#7796cb] font-sans text-lg font-medium hover:text-[#fbfcff] no-underline">
-              CONTACT
-            </a>
-          </div>
-        </div>
-      </nav>
+      <Navbar scrollHide />
 
       <main>
         {/* Title Section */}
