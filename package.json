@@ -20,6 +20,7 @@
     "next-mdx-remote": "^6.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "rehype-pretty-code": "^0.14.1",
     "three": "^0.182.0",
     "typeit-react": "^2.7.8"
   },

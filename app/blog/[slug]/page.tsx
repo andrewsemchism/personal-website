@@ -1,5 +1,6 @@
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import Link from 'next/link';
+import rehypePrettyCode from 'rehype-pretty-code';
 import { getAllPosts, getPostBySlug } from '@/lib/blog';
 import { mdxComponents } from '@/app/components/mdx/mdxComponents';
 import Navbar from '@/app/components/Navbar';
@@ -63,7 +64,15 @@ export default async function PostPage({ params }: Props) {
 
           {/* MDX content */}
           <div className="blog-prose">
-            <MDXRemote source={post.content} components={mdxComponents} />
+            <MDXRemote
+              source={post.content}
+              components={mdxComponents}
+              options={{
+                mdxOptions: {
+                  rehypePlugins: [[rehypePrettyCode, { theme: 'github-dark' }]],
+                },
+              }}
+            />
           </div>
         </div>
       </main>
