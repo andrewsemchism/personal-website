@@ -7,10 +7,10 @@ export const mdxComponents: MDXComponents = {
     <h1 className="font-sans font-bold text-[#fbfcff] text-3xl mt-8 mb-4">{children}</h1>
   ),
   h2: ({ children }) => (
-    <h2 className="font-mono text-[#d0ccd0] text-xl mt-8 mb-3">{children}</h2>
+    <h2 className="font-mono text-[#d0ccd0] text-2xl mt-8 mb-3">{children}</h2>
   ),
   h3: ({ children }) => (
-    <h3 className="font-mono text-[#d0ccd0] text-base mt-6 mb-2">{children}</h3>
+    <h3 className="font-mono text-[#d0ccd0] text-lg mt-6 mb-2">{children}</h3>
   ),
   p: ({ children }) => (
     <p className="font-sans text-[#888e9e] leading-7 mb-4">{children}</p>

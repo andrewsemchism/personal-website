@@ -1,17 +1,272 @@
 ---
-title: Hello World Code Samples
-date: "2026-02-28"
-description: A sample post demonstrating syntax-highlighted code blocks.
+title: "TypeScript: Some Important Bits"
+date: "2026-03-08"
+description: A living reference of TypeScript features that are useful and sometimes forgotten.
 tags: ["typescript"]
-published: false
+published: true
 ---
 
-Here's a simple TypeScript hello world:
+This is a living post where I keep a running list of TypeScript features that are useful and sometimes forgotten. It's been a while since I've studied the [TypeScript handbook](https://www.typescriptlang.org/docs/handbook/intro.html) and I wanted to give myself a little refresher on the fundamentals.
+
+## Some Basics
+
+### Why use TypeScript?
+
+There are many reasons to use TypeScript. The most important reason is to catch errors before execution. TypeScript uses [static type checking](https://en.wikipedia.org/wiki/Type_system#Static_type_checking) to ensure that errors are caught at compile time, before code runs.
+
+### How do I run my TypeScript code?
+
+So many options! You can try the [TypeScript compiler](https://www.npmjs.com/package/typescript), [tsx](https://www.npmjs.com/package/tsx), or [Bun](https://bun.sh/). I've been using Bun lately.
+
+## The List
+
+### How does my editor show type errors in real time as I type? I thought TypeScript did type checking at compile time?
+
+Your editor runs a background process called a language server that incrementally re-parses only the changed parts of your code, type-checks them, and sends errors back as diagnostics that get rendered as squiggles.
+
+See the [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server) for more details.
+
+### What is downleveling?
+
+Downleveling is the process of rewriting modern JavaScript syntax into an older version that more environments can run. TypeScript does this automatically when it compiles your code.
+
+When we run `tsc` on this code:
 
 ```typescript
-const greet = (name: string): string => {
-  return `Hello, ${name}!`;
+function greet(person: string, date: Date) {
+  console.log(`Hello ${person}, it is ${date.toDateString()}!`);
+}
+
+greet("Andrew", new Date());
+```
+
+We get:
+
+```javascript
+function greet(person, date) {
+    console.log("Hello ".concat(person, ", it is ").concat(date.toDateString(), "!"));
+}
+greet("Andrew", new Date());
+```
+
+Template strings are from ES6 and `tsc` compiles to ES5 by default.
+
+### What does strict mode do?
+
+From the [TypeScript docs](https://www.typescriptlang.org/tsconfig/#strict): "The `strict` flag enables a wide range of type checking behavior that results in stronger guarantees of program correctness."
+
+A new codebase should always have strict mode on. If you're migrating from JavaScript to TypeScript, it might make sense to have it off initially.
+
+`noImplicitAny` and `strictNullChecks` are the two most important rules that strict mode enables.
+
+- `strictNullChecks`: makes `null` and `undefined` their own distinct types instead of being assignable to everything. Forces you to handle the nullish cases.
+- `noImplicitAny`: errors when TypeScript would otherwise silently infer `any`.
+
+### What are the primitives? How many primitives are there?
+
+A primitive is data that is not an object and has no methods or properties.
+
+TypeScript has 7 primitive types — same as JavaScript, since TypeScript is a superset of JavaScript and doesn't introduce new runtime values.
+
+The seven primitive types are: `string`, `number`, `boolean`, `null`, `undefined`, `symbol`, and `bigint`.
+
+### What is the key difference between type aliases and interfaces?
+
+One of the core differences: interfaces can be merged, type aliases can't.
+
+```typescript
+// ✅ Interfaces merge
+interface User { id: number; }
+interface User { name: string; }
+// User is now: { id: number; name: string; }
+
+// ❌ Type aliases don't
+type User = { id: number; }
+type User = { name: string; } // Error: Duplicate identifier 'User'
+```
+
+### When does a type assertion become necessary?
+
+In general, you use a type assertion when you know something about the type of a value that TypeScript can't know about.
+
+The classic cases are:
+
+```typescript
+// Narrowing from a broad type
+const input = document.getElementById('email') as HTMLInputElement;
+input.value; // TS only knows it's HTMLElement — you know it's an input
+
+// Parsing external data
+const config = JSON.parse(rawJson) as Config;
+
+// The "escape hatch"
+const a = expr as any as T;
+```
+
+A lot of people call this "casting," but that's not quite right. "Cast" implies a runtime transformation, and `as` does nothing at runtime.
+
+### What is a literal type?
+
+A literal type is when instead of saying "this is a string," you say "this is *specifically* this string."
+
+```typescript
+let a: string = "hello"; // any string
+let b: "hello" = "hello"; // only ever "hello"
+
+b = "world"; // Error: Type '"world"' is not assignable to type '"hello"'
+```
+
+Works well with numbers and booleans too:
+
+```typescript
+type Direction = "left" | "right" | "up" | "down";
+type StatusCode = 200 | 404 | 500;
+```
+
+You can express a precise set of allowed values!
+
+### What does `as const` do in TypeScript?
+
+It tells TypeScript to infer the narrowest, most specific type it can for an expression.
+
+```typescript
+const direction = "left";
+// TS infers: string
+
+const direction = "left" as const;
+// TS infers: "left"
+```
+
+Without it, this breaks:
+
+```typescript
+function move(d: "left" | "right") {}
+
+const direction = "left"; // widened to string
+move(direction); // ❌ Error: Argument of type 'string' is not assignable to parameter of type '"left" | "right"'
+
+const direction2 = "left" as const; // locked to "left"
+move(direction2); // ✅
+```
+
+It also works on objects and arrays, making all values `readonly` and literal:
+
+```typescript
+const config = { env: "production" } as const;
+// env is "production", not string
+// and it can't be reassigned
+```
+
+### What is the non-null assertion operator?
+
+The `!` is a type assertion that the value isn't `null` or `undefined`.
+
+The most common place you'll see this in real code is with DOM queries:
+
+```typescript
+const button = document.querySelector("button");
+button.click(); // ❌ Error: button is possibly null
+
+const button2 = document.querySelector("button")!;
+button2.click(); // ✅ you're asserting the element exists
+```
+
+### What is the type of `null`?
+
+Is in an `object`.
+
+```typescript
+console.log(typeof null); // "object"
+```
+
+This is a well-known quirk of JavaScript (and therefore TypeScript). It's a historical bug that was never fixed for backwards compatibility reasons.
+
+### Type narrowing
+
+Sometimes TypeScript can't automatically figure out which member of a union you're working with because the actual shape of the value is only known at runtime.
+
+The union exists at compile time. The concrete object exists at runtime.
+
+```typescript
+type Cat = {
+  meow: () => void;
 };
 
-console.log(greet("world"));
+type Dog = {
+  woof: () => void;
+};
+
+type Pet = Cat | Dog;
+
+function getSmallPet(): Pet {
+  return Math.random() > 0.5
+    ? { meow: () => console.log("meow") }
+    : { woof: () => console.log("woof") };
+}
+
+function isDog(pet: Pet): pet is Dog {
+  return "woof" in pet;
+}
+
+const pet = getSmallPet();
+
+if (isDog(pet)) {
+  pet.woof();
+} else {
+  pet.meow();
+}
 ```
+
+`Math.random()` simulates runtime uncertainty. At compile time, `pet` is `Cat | Dog`. At runtime, it's one specific shape.
+
+A **type predicate** like `pet is Dog` connects your runtime check to the type system, allowing TypeScript to safely narrow the union.
+
+### Generic constraints with `extends`
+
+Sometimes a generic is too permissive. If you write `function findById<T>` and try to access `item.id` inside the function, TypeScript will complain — `T` could be anything, so it can't guarantee `.id` exists.
+
+Adding a constraint with `extends` fixes this:
+
+```typescript
+function findById<T extends { id: number }>(items: T[], id: number): T | undefined {
+  return items.find(item => item.id === id);
+}
+
+const users = [
+  { id: 1, name: "Andrew", role: "admin" },
+  { id: 2, name: "Taylor", role: "viewer" },
+];
+
+const found = findById(users, 1);
+found?.role; // ✅ TypeScript knows this is a string — full shape is preserved
+```
+
+The constraint says "accept any `T`, as long as it has an `id`." The return type is still the full `T`, not just `{ id: number }`, so you don't lose any fields on the way out.
+
+The rule of thumb: use a plain generic when you just need type flow-through, add `extends` the moment you need to *use* the value inside the function.
+
+### Function overloads
+
+JavaScript doesn't support true function overloading — if you define the same function twice, the second definition just overwrites the first. TypeScript adds proper overload signatures on top of the single-function reality.
+
+The pattern: declare your valid call signatures first, then write one implementation that handles all of them.
+
+```typescript
+function formatDate(date: Date): string;
+function formatDate(date: Date, includeTime: boolean): string;
+
+function formatDate(date: Date, includeTime?: boolean): string {
+  if (includeTime) {
+    return date.toLocaleString();
+  }
+  return date.toLocaleDateString();
+}
+
+formatDate(new Date());             // ✅ "3/8/2026"
+formatDate(new Date(), true);       // ✅ "3/8/2026, 2:45:00 PM"
+formatDate(new Date(), "detailed"); // ❌ not a valid signature
+```
+
+The first two lines are purely for TypeScript and they disappear at compile time. The implementation signature is never visible to callers — only the declared overloads show up in autocomplete.
+
+Most of the time overloads are not needed. Optional parameters or union types are usually good enough.
