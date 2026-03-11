@@ -23,6 +23,11 @@ export default function Vibes() {
               Typing Game
             </Link>
           </div>
+          <div>
+            <Link href="/vibes/price-converters" className="text-[#7796cb] font-sans text-lg hover:text-[#fbfcff] no-underline">
+              Price Converters
+            </Link>
+          </div>
         </div>
       </div>
     </div>
