@@ -1,0 +1,111 @@
+---
+title: "BeerBoss.ca: Refreshing my first side project"
+date: "2026-03-15"
+description: Rewriting my first ever side project from scratch, six years later.
+tags: ["projects", "web"]
+published: true
+---
+
+This weekend I rewrote [BeerBoss.ca](https://beerboss.ca) from scratch. BeerBoss was my first ever side project, which I started back in 2020 to find the cheapest beer available in Ontario at [The Beer Store](https://en.wikipedia.org/wiki/The_Beer_Store). The project started with a question: "What is the absolute cheapest beer in Ontario?"
+
+The original version worked fine, but the architecture was embarrassingly over-engineered for what it actually did — mostly because I was just trying to experiment with new technologies and learn something. At this point, I just want it to be simple.
+
+## The Old Architecture (and Why It Was Silly)
+
+The original stack: a Dockerized Express backend and a Dockerized React frontend, deployed to a VPS.
+
+The backend had exactly one endpoint: fetch the beer data. That's it. One GET request that returned JSON. For that, I had a full Node.js server running in a Docker container, sitting on a VPS I was paying ~$40 a year for.
+
+I built it that way because I was exploring new technologies. Docker was cool and I wanted to learn it. Self-hosting on a VPS is actually a great experience — you SSH in, set up nginx, manage your own deployments, and get a real feel for how things work under the hood. At under $5/month it's also pretty accessible. [Pieter Levels](https://x.com/levelsio) famously runs his entire business — hundreds of thousands a month in revenue — off a single VPS. But I don't even need a backend. A VPS is overkill for serving a static JSON file.
+
+## The New Architecture
+
+The new version is a Next.js static export, hosted on Cloudflare Pages for free.
+
+All ~2,500 beer purchasing options live in a single `beers.json` file in the repo. The whole frontend is a static site — no server at all. Sorting, filtering, and searching all happen client-side, which is completely fine for a dataset this size. On load, a simple hook fetches the JSON and hands it off to a TanStack Table instance:
+
+```ts
+export function useBeerData(): UseBeerDataResult {
+  const [data, setData] = useState<BeersData | null>(null);
+  // ...
+  useEffect(() => {
+    fetch("/data/beers.json")
+      .then((res) => res.json() as Promise<BeersData>)
+      .then((json) => { setData(json); setLoading(false); });
+  }, []);
+  return { data, loading, error };
+}
+```
+
+## How I Scrape 2,500+ Purchasing Options in Under 3 Seconds
+
+This is the cool part.
+
+The original scraper worked by crawling the old Beer Store website: grab every beer URL from the homepage, visit each one individually, and scrape the price. With 700+ beers and over 2,500 purchasing options (pack sizes, cans, bottles, kegs), this took a while. Go too fast and you get rate-limited — and I was running it from my laptop with no proxies.
+
+A few years ago, The Beer Store redesigned their website. My script broke. When I went to fix it, I poked around the network tab and discovered they had migrated to [Algolia](https://www.algolia.com/) for their product search. Algolia is a hosted search API — and the credentials it uses on their frontend are, by design, meant to be public.
+
+The new scraper is a single Python file. It makes a POST request to their Algolia endpoint with an empty query and `hitsPerPage=1000`, then paginates through the results:
+
+```python
+SEARCH_URL = "https://qaht1ly72o-dsn.algolia.net/1/indexes/*/queries"
+
+def build_request(page: int) -> dict:
+    return {
+        "requests": [{
+            "indexName": "Ecomm_Listing_Prod_sale",
+            "query": "",
+            "params": BASE_PARAMS + f"&page={page}",
+        }]
+    }
+```
+
+Each response gives back a page of up to 1,000 beers with everything I need: name, price, sale price, ABV, format, quantity, country, and a link back to the product page. A few paginated requests and I have the entire catalogue. The whole thing runs in under 3 seconds.
+
+If The Beer Store ever migrates off of Algolia, I'll have to find another way.
+
+### The Dollars Per Drink Metric
+
+One thing I compute that the Beer Store doesn't show you: **dollars per standard drink of alcohol**.
+
+A standard drink in Canada is 17.75 mL of pure alcohol. That number comes directly from a standard can of beer: 355 mL × 5% = 17.75 mL. Given a beer's price, ABV, size, and quantity, I can calculate exactly how much you're paying per unit of alcohol:
+
+```python
+def calculate_dollars_per_serving_of_alcohol(
+    price: float, size_ml: int, quantity: int, abv: float
+) -> float:
+    """Dollars per serving of alcohol (1 serving = 17.75 mL of pure alcohol)."""
+    return round(price / ((size_ml * quantity * (abv / 100)) / 17.75), 4)
+```
+
+This is the core metric that BeerBoss is built around. You can sort by it to find the best value in the entire store.
+
+## Automating the Scraper
+
+Before this rewrite, I ran the scraper manually — somewhere between once a week and once every couple months. Data got stale if I forgot to update it. I kept meaning to automate it and never did.
+
+Now it runs once a day via a GitHub Action. The action runs the Python script, commits the updated `beers.json` to the repo, and Cloudflare Pages re-deploys automatically.
+
+## Publishing the Scraper
+
+I also decided to make the scraping script public for the first time. I used to keep it private for two reasons: it's the only non-trivial part of the site, and I didn't want to make it too easy for The Beer Store to see exactly what I was doing.
+
+Neither of those concerns feels worth it anymore. If someone wants to clone the site, that's fine. And if The Beer Store patches the Algolia access, I'll figure out a new approach.
+
+## Analytics
+
+I had 3,200 users in 2025 and 5,100 page views. That's down 42% from 2024, which is a bigger drop than I can attribute to "people are drinking less." My best guess is that my Google ranking slipped somewhere along the way. Hopefully the redesign helps recover some of that.
+
+<PostImage src="/images/google-analytics-beer-boss-2025.png" alt="Google Analytics for BeerBoss.ca in 2025" />
+
+## What's Next
+
+A few things I'd like to add eventually:
+
+**Historical price tracking.** I have six years of scraped data sitting around. It would be cool to show price trends over time. The catch: The Beer Store changed their pricing display (taxes and deposit went from included to excluded), and I changed my data format more than once. Reconciling all of it would take some work.
+
+**Per-location inventory.** Right now I'm scraping data from a single Toronto store. Prices and sales are pretty consistent across Ontario, but stock levels vary by location. It'd be nice to add an "In Stock" filter so you're not browsing beers that aren't available near you.
+
+---
+
+If you're in Ontario and looking for the best deal on beer, [give it a try](https://beerboss.ca).

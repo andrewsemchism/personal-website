@@ -16,7 +16,7 @@ export const mdxComponents: MDXComponents = {
     <p className="font-sans text-[#888e9e] leading-7 mb-4">{children}</p>
   ),
   a: ({ href, children }) => (
-    <a href={href} className="text-[#7796cb] hover:text-[#fbfcff] transition-colors">
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#7796cb] hover:text-[#fbfcff] transition-colors">
       {children}
     </a>
   ),
