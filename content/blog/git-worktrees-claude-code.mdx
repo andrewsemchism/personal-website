@@ -1,0 +1,67 @@
+---
+title: "Git Worktrees + Claude Code: My Workflow"
+date: "2026-03-26"
+description: How I use git worktrees to run multiple Claude Code sessions in parallel.
+tags: ["ai", "workflow", "tools"]
+published: true
+---
+
+If you've been using Claude Code for a while, you've probably run into this: you want to start a second task while keeping the current one going. You could clone the repo again, but the easier answer is git worktrees.
+
+I never had much reason to use worktrees before. When I was writing code without Claude Code, switching tasks just meant stashing my changes or making a WIP commit and coming back later.
+
+With Claude Code, running multiple sessions in parallel is actually useful. Worktrees are what make it work.
+
+## The built-in way vs. my way
+
+Claude Code has a `--worktree` flag that handles everything for you:
+
+```bash
+claude --worktree feature-auth
+```
+
+This creates `.claude/worktrees/feature-auth/` as the working directory, along with a new branch. It works, but I don't use it this way.
+
+The problem is that worktrees end up buried under `.claude/` in the repo. I start losing track of what I've made.
+
+Instead, I create the worktree myself:
+
+```bash
+git worktree add ../my-repo-feature-auth
+cd ../my-repo-feature-auth
+claude
+```
+
+I place the worktree as a sibling directory to the repo, give it a name I'll remember, and then `cd` into it and start Claude from there.
+
+Interestingly, this is actually [documented as an official pattern in the Claude Code docs](https://code.claude.com/docs/en/common-workflows#manage-worktrees-manually).
+
+## Why I prefer manual worktree creation
+
+A few reasons:
+
+**I know what I have.** Creating a worktree manually helps me keep track of what I'm working on.
+
+**The location makes sense.** Sibling directories are easy to navigate to and simple to open in a new editor window.
+
+**It fits how I already work.** I often write my prompt in a markdown file before starting Claude anyway, so creating the worktree and dropping in a `PLAN.md` is a natural combo for me.
+
+## The actual workflow
+
+```bash
+# From the main repo
+git worktree add ../my-repo-refactor-auth
+cd ../my-repo-refactor-auth
+
+# Write out your prompt
+nano PLAN.md
+
+# Let it rip
+claude --dangerously-skip-permissions -p "Execute on PLAN.md"
+```
+
+From there, Claude runs autonomously while I switch back to the main worktree or review a PR or whatever. When the work is done, I merge the branch normally and clean up:
+
+```bash
+git worktree remove ../my-repo-refactor-auth
+```
