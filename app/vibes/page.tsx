@@ -28,6 +28,11 @@ export default function Vibes() {
               Price Converters
             </Link>
           </div>
+          <div>
+            <Link href="/vibes/dollarama-heat-map" className="text-[#7796cb] font-sans text-lg hover:text-[#fbfcff] no-underline">
+              Dollarama Heat Map
+            </Link>
+          </div>
         </div>
       </div>
     </div>
