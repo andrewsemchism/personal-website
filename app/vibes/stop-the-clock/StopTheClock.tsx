@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import styles from './stopTheClock.module.css';
 import {
   ATTEMPTS_PER_RUN,
   SCORINGS,
@@ -421,7 +422,7 @@ export default function StopTheClock() {
             <p className="text-[#888e9e] font-sans text-xs uppercase tracking-[0.18em] mb-3">
               {finishedRun.target}s · {SCORING_LABEL[finishedRun.scoring]} score
             </p>
-            <div className="animate-[clockPop_0.35s_ease-out]">
+            <div className={styles.pop}>
               <span className={`text-6xl sm:text-7xl font-mono font-bold ${rating.text}`}>
                 {formatSeconds(finishedRun.score)}
               </span>
@@ -502,7 +503,7 @@ export default function StopTheClock() {
         <span className="absolute inset-0 rounded-full bg-[#fbfcff]/5 ring-1 ring-[#7796cb]/20" />
 
         {attemptState === 'running' && (
-          <span className="absolute inset-6 rounded-full bg-[#7796cb]/20 blur-2xl animate-[clockBreathe_3.3s_ease-in-out_infinite]" />
+          <span className={`absolute inset-6 rounded-full bg-[#7796cb]/20 blur-2xl ${styles.breathe}`} />
         )}
 
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90" aria-hidden>
@@ -534,7 +535,7 @@ export default function StopTheClock() {
 
           {attemptState === 'running' && (
             <>
-              <span className="text-5xl sm:text-6xl font-mono font-bold bg-[linear-gradient(100deg,rgba(119,150,203,0.25)_20%,rgba(251,252,255,0.9)_50%,rgba(119,150,203,0.25)_80%)] bg-[length:220%_100%] bg-clip-text text-transparent animate-[clockShimmer_3.3s_linear_infinite]">
+              <span className={`text-5xl sm:text-6xl font-mono font-bold bg-[linear-gradient(100deg,rgba(119,150,203,0.25)_20%,rgba(251,252,255,0.9)_50%,rgba(119,150,203,0.25)_80%)] bg-[length:220%_100%] bg-clip-text text-transparent ${styles.shimmer}`}>
                 ?.??
               </span>
               <span className="text-[#fbfcff] font-sans text-sm font-medium">Tap to stop</span>
@@ -542,7 +543,7 @@ export default function StopTheClock() {
           )}
 
           {attemptState === 'stopped' && lastElapsed !== null && (
-            <span className="flex flex-col items-center gap-2 animate-[clockPop_0.3s_ease-out]">
+            <span className={`flex flex-col items-center gap-2 ${styles.pop}`}>
               <span className="text-5xl sm:text-6xl font-mono font-bold text-[#fbfcff]">
                 {formatSeconds(lastElapsed)}
               </span>

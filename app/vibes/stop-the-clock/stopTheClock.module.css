@@ -1,0 +1,28 @@
+/* Animations for Stop the Clock. Scoped to this game — nothing here is global. */
+
+.shimmer {
+  animation: shimmer 3.3s linear infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: 220% 0; }
+  to   { background-position: -220% 0; }
+}
+
+.breathe {
+  animation: breathe 3.3s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50%      { opacity: 0.8;  transform: scale(1.08); }
+}
+
+.pop {
+  animation: pop 0.3s ease-out;
+}
+
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
