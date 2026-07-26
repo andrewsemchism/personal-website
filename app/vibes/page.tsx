@@ -24,6 +24,11 @@ export default function Vibes() {
             </Link>
           </div>
           <div>
+            <Link href="/vibes/stop-the-clock" className="text-[#7796cb] font-sans text-lg hover:text-[#fbfcff] no-underline">
+              Stop the Clock
+            </Link>
+          </div>
+          <div>
             <Link href="/vibes/price-converters" className="text-[#7796cb] font-sans text-lg hover:text-[#fbfcff] no-underline">
               Price Converters
             </Link>
