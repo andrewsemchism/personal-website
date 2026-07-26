@@ -273,8 +273,8 @@ export default function StopTheClock() {
       finishRun(attempts);
       return;
     }
-    setLastElapsed(null);
-    setAttemptState('ready');
+    // A press on a finished attempt runs the next one straight away.
+    startAttempt();
   }, [attemptState, attempts, canAdvance, finishRun, startAttempt, stopAttempt]);
 
   // Space / Enter mirror the tap target for desktop play.
@@ -480,7 +480,14 @@ export default function StopTheClock() {
         ? 'Tap to stop'
         : isLastAttempt
           ? 'See results'
-          : 'Next attempt';
+          : `Start attempt ${attempts.length + 1}`;
+
+  const helperText =
+    attemptState === 'stopped'
+      ? isLastAttempt
+        ? 'Tap or press space for your score'
+        : `Tap or press space to start attempt ${attempts.length + 1}`
+      : 'Tap the dial or press space';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-7 px-4 py-10">
@@ -559,7 +566,7 @@ export default function StopTheClock() {
       </button>
 
       <p className="text-[#888e9e] font-sans text-sm text-center h-5">
-        {attemptState === 'stopped' ? buttonLabel : 'Space or tap anywhere in the dial'}
+        {helperText}
       </p>
 
       <div className="flex flex-wrap justify-center gap-2 min-h-8 max-w-md">
