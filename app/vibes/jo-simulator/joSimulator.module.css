@@ -1,0 +1,63 @@
+/* Animations for Jo Simulator. Scoped to this game — nothing here is global. */
+
+.pop {
+  animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.92) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.fadeIn {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.countIn {
+  animation: countIn 0.9s ease-out;
+}
+
+@keyframes countIn {
+  0%   { opacity: 0; transform: scale(1.9); }
+  25%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.15; transform: scale(0.82); }
+}
+
+.lowTime {
+  animation: lowTime 0.85s ease-in-out infinite;
+}
+
+@keyframes lowTime {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+.badge {
+  animation: badge 2.6s ease-in-out infinite;
+}
+
+@keyframes badge {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50%      { transform: translateY(-4px) rotate(2deg); }
+}
+
+.sheen {
+  background-size: 220% 100%;
+  animation: sheen 4.5s linear infinite;
+}
+
+@keyframes sheen {
+  from { background-position: 220% 0; }
+  to   { background-position: -220% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop, .fadeIn, .countIn, .lowTime, .badge, .sheen {
+    animation: none;
+  }
+}

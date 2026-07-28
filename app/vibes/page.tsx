@@ -9,6 +9,11 @@ export default function Vibes() {
         </p>
         <div className="space-y-2">
           <div>
+            <Link href="/vibes/jo-simulator" className="text-[#7796cb] font-sans text-lg hover:text-[#fbfcff] no-underline">
+              Jo Simulator
+            </Link>
+          </div>
+          <div>
             <Link href="/vibes/whiteboard" className="text-[#7796cb] font-sans text-lg hover:text-[#fbfcff] no-underline">
               Whiteboard
             </Link>
