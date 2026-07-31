@@ -1,0 +1,427 @@
+/* Pool of Life. Self-contained — nothing here leaks out of this experiment. */
+
+.root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #050e18;
+  color: #dceefb;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* The tint you get once the camera drops below the surface. */
+.submerged::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(
+    130% 95% at 50% 38%,
+    rgba(28, 140, 190, 0.1),
+    rgba(3, 38, 62, 0.42)
+  );
+  animation: sway 7s ease-in-out infinite;
+}
+
+@keyframes sway {
+  0%, 100% { opacity: 0.82; }
+  50%      { opacity: 1; }
+}
+
+/* -------------------------------------------------------------------------- */
+/* HUD                                                                        */
+/* -------------------------------------------------------------------------- */
+
+.hud {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  padding: clamp(12px, 2.2vw, 26px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.panel {
+  background: rgba(5, 21, 34, 0.52);
+  border: 1px solid rgba(140, 210, 245, 0.14);
+  border-radius: 14px;
+  padding: clamp(10px, 1.6vw, 18px) clamp(12px, 2vw, 22px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  color: #6f93aa;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hero — the drop counter, which is the whole argument in one number. */
+.heroNumber {
+  composes: mono;
+  font-size: clamp(1.9rem, 6vw, 4.2rem);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  color: #eef8ff;
+  text-shadow: 0 0 34px rgba(90, 205, 255, 0.32);
+  margin: 4px 0 2px;
+}
+
+.heroSub {
+  composes: mono;
+  font-size: clamp(10px, 1.15vw, 13px);
+  color: #7fa2b8;
+}
+
+.ageLine {
+  composes: mono;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(140, 210, 245, 0.12);
+  font-size: clamp(13px, 1.7vw, 19px);
+  color: #b9e2f5;
+}
+
+.ageLabel {
+  color: #6f93aa;
+  font-size: 0.72em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.right {
+  text-align: right;
+}
+
+.dateLine {
+  composes: mono;
+  font-size: clamp(10px, 1.15vw, 12px);
+  color: #6f93aa;
+  margin-top: 3px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Bottom                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(12px, 2.6vw, 34px);
+}
+
+.stat {
+  min-width: 0;
+}
+
+.statValue {
+  composes: mono;
+  display: block;
+  margin-top: 3px;
+  font-size: clamp(13px, 1.7vw, 18px);
+  color: #e6f5ff;
+}
+
+.accent {
+  color: #6fe3ff;
+}
+
+.scrubRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.scrubEdge {
+  composes: mono;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6f93aa;
+  white-space: nowrap;
+}
+
+.scrub {
+  flex: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.scrub::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(111, 227, 255, 0.75), rgba(111, 227, 255, 0.12));
+}
+
+.scrub::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(111, 227, 255, 0.75), rgba(111, 227, 255, 0.12));
+}
+
+.scrub::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: #eef8ff;
+  border: none;
+  box-shadow: 0 0 14px rgba(111, 227, 255, 0.9);
+}
+
+.scrub::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #eef8ff;
+  border: none;
+  box-shadow: 0 0 14px rgba(111, 227, 255, 0.9);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.group {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(8, 26, 40, 0.6);
+  border: 1px solid rgba(140, 210, 245, 0.14);
+  border-radius: 999px;
+}
+
+.chip {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #8fb3c8;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  padding: 6px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+  white-space: nowrap;
+}
+
+.chip:hover:not(:disabled) {
+  color: #eef8ff;
+  background: rgba(111, 227, 255, 0.1);
+}
+
+.chip:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.chipOn {
+  background: rgba(111, 227, 255, 0.18);
+  color: #eef8ff;
+  box-shadow: inset 0 0 0 1px rgba(111, 227, 255, 0.35);
+}
+
+.ghost {
+  composes: chip;
+  border: 1px solid rgba(140, 210, 245, 0.16);
+  background: rgba(8, 26, 40, 0.6);
+  padding: 9px 15px;
+}
+
+.topRight {
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.hint {
+  composes: mono;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #55738a;
+}
+
+.fullNote {
+  composes: mono;
+  font-size: clamp(11px, 1.3vw, 13px);
+  color: #ffd9a8;
+  letter-spacing: 0.08em;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Setup                                                                      */
+/* -------------------------------------------------------------------------- */
+
+.setup {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  background:
+    radial-gradient(120% 80% at 50% 0%, #123449 0%, #071523 55%, #03080f 100%);
+}
+
+.setupCard {
+  width: min(620px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.wordmark {
+  composes: mono;
+  font-size: clamp(1.7rem, 5.5vw, 2.8rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #eef8ff;
+  line-height: 1;
+}
+
+.blurb {
+  font-size: clamp(13px, 1.6vw, 15px);
+  line-height: 1.72;
+  color: #9dbdd1;
+  margin: 0;
+}
+
+.blurb strong {
+  color: #dceefb;
+  font-weight: 600;
+}
+
+.rate {
+  composes: mono;
+  font-size: clamp(13px, 1.6vw, 15px);
+  color: #6fe3ff;
+}
+
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1 1 200px;
+}
+
+.input {
+  composes: mono;
+  appearance: none;
+  width: 100%;
+  background: rgba(8, 26, 40, 0.75);
+  border: 1px solid rgba(140, 210, 245, 0.22);
+  border-radius: 10px;
+  padding: 11px 13px;
+  color: #eef8ff;
+  font-size: 15px;
+  color-scheme: dark;
+}
+
+.input:focus {
+  outline: none;
+  border-color: rgba(111, 227, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(111, 227, 255, 0.14);
+}
+
+.submit {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 26px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #04202f;
+  background: linear-gradient(100deg, #7fe9ff, #46b6e8);
+  cursor: pointer;
+  align-self: flex-start;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 10px 32px -12px rgba(111, 227, 255, 0.8);
+}
+
+.submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 38px -12px rgba(111, 227, 255, 0.95);
+}
+
+.submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.error {
+  composes: mono;
+  font-size: 12px;
+  color: #ff9d8a;
+}
+
+@media (max-width: 640px) {
+  .ageLine {
+    font-size: 14px;
+  }
+
+  .stats {
+    gap: 12px 18px;
+  }
+
+  .hint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .submerged::after {
+    animation: none;
+  }
+}

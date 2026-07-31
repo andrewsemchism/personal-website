@@ -43,6 +43,11 @@ export default function Vibes() {
               Dollarama Heat Map
             </Link>
           </div>
+          <div>
+            <Link href="/vibes/pool-of-life" className="text-[#7796cb] font-sans text-lg hover:text-[#fbfcff] no-underline">
+              Pool of Life
+            </Link>
+          </div>
         </div>
       </div>
     </div>
