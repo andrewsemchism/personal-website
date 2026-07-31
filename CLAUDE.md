@@ -54,3 +54,7 @@ The development server runs at [http://localhost:3000](http://localhost:3000).
 ## Vibes Section
 
 The `/vibes` section is a playground for vibe coding and random experimental projects. It's a space for quick, creative coding experiments without overthinking.
+
+Do not reuse existing styles from rest of the website when working in vibes unless explicitly told to. Each project in vibes can have a unique look and feel.
+
+Do not include a link in vibes projects back to the vibes homepage.
