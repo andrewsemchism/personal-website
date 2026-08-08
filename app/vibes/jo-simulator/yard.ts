@@ -77,10 +77,7 @@ export type House = {
 export const HOUSES: readonly House[] = [
   {
     name: 'near',
-    blocks: [
-      { x: 938, y: 316, w: 342, h: 190 },
-      { x: 1044, y: 494, w: 236, h: 130 },
-    ],
+    blocks: [{ x: 938, y: 316, w: 342, h: 190 }],
     eaves: 13,
     roofLight: '#5b6169',
     roofMid: '#464c54',
@@ -104,8 +101,11 @@ export const HOUSES: readonly House[] = [
   },
 ];
 
-/** Asphalt beside the near house — outside the fence, so no ball ever lands here. */
-export const DRIVEWAY: Rect = { x: 1156, y: 624, w: 124, h: 176 };
+/**
+ * Asphalt running from the near house's back wall down off the bottom of the
+ * frame. Outside the fence, so no ball is ever thrown onto it.
+ */
+export const DRIVEWAY: Rect = { x: 1126, y: 508, w: 154, h: 292 };
 
 /* -------------------------------------------------------------------------- */
 /* decks                                                                       */
@@ -137,8 +137,8 @@ export const DECKS: readonly Poly[] = [
 /* garden                                                                      */
 /* -------------------------------------------------------------------------- */
 
-/** The tomato patch down the left-hand side of the far yard. */
-export const TOMATO_GARDEN: Rect = { x: 52, y: 520, w: 172, h: 148 };
+/** The tomato patch: a long narrow strip run right up against the left fence. */
+export const TOMATO_GARDEN: Rect = { x: 44, y: 402, w: 78, h: 322 };
 
 /** Small shed tucked into the top-left corner. */
 export const SHED: Rect = { x: 90, y: 58, w: 80, h: 46 };
@@ -173,7 +173,6 @@ function toSolid(poly: Poly): Solid {
  */
 const SOLIDS: readonly Solid[] = [
   toSolid(rectPoly({ x: 938, y: 316, w: 342, h: 190 })),
-  toSolid(rectPoly({ x: 1044, y: 494, w: 236, h: 130 })),
   toSolid(rectPoly({ x: 352, y: 672, w: 258, h: 128 })),
   toSolid(rectPoly({ x: 646, y: 702, w: 462, h: 98 })),
 ];

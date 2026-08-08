@@ -62,7 +62,7 @@ const TREES: readonly [number, number, number][] = [
   [986, 62, 106],
   [1220, 92, 102],
   [-28, 248, 110],
-  [-14, 470, 94],
+  [-52, 452, 86],
   [1272, 268, 96],
   [524, 168, 72],
 ];
@@ -71,7 +71,7 @@ const TREES: readonly [number, number, number][] = [
 const OVERHEAD: readonly [number, number, number, number][] = [
   [376, 62, 126, 0.5],
   [878, 54, 130, 0.46],
-  [88, 366, 82, 0.4],
+  [64, 300, 78, 0.4],
 ];
 
 const DELIVER_RING = 76;
@@ -502,23 +502,39 @@ function drawTomatoGarden(ctx: CanvasRenderingContext2D, bed: Rect, rng: () => n
     ctx.fillStyle = rng() > 0.5 ? 'rgba(96, 70, 46, 0.4)' : 'rgba(16, 11, 7, 0.42)';
     ctx.fillRect(px, py, 2.2, 1.6);
   }
-  // Hoed furrows.
-  for (let row = bed.y + 18; row < bed.y + bed.h - 8; row += 34) {
-    ctx.strokeStyle = 'rgba(14, 9, 6, 0.35)';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(bed.x + 4, row);
-    ctx.lineTo(bed.x + bed.w - 4, row);
-    ctx.stroke();
+  // Hoed furrows, run down whichever way the bed is long.
+  const tall = bed.h > bed.w;
+  ctx.strokeStyle = 'rgba(14, 9, 6, 0.35)';
+  ctx.lineWidth = 5;
+  if (tall) {
+    for (let col = bed.x + 22; col < bed.x + bed.w - 8; col += 30) {
+      ctx.beginPath();
+      ctx.moveTo(col, bed.y + 4);
+      ctx.lineTo(col, bed.y + bed.h - 4);
+      ctx.stroke();
+    }
+  } else {
+    for (let row = bed.y + 18; row < bed.y + bed.h - 8; row += 34) {
+      ctx.beginPath();
+      ctx.moveTo(bed.x + 4, row);
+      ctx.lineTo(bed.x + bed.w - 4, row);
+      ctx.stroke();
+    }
   }
   ctx.restore();
 
-  // Plants in three rows of three.
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
+  // Plants, spaced to fit whatever shape the bed is.
+  const innerX = bed.x + 24;
+  const innerY = bed.y + 24;
+  const innerW = bed.w - 48;
+  const innerH = bed.h - 48;
+  const cols = Math.max(1, Math.round(innerW / 54) + 1);
+  const rows = Math.max(1, Math.round(innerH / 54) + 1);
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
       // Planted by hand, so nothing lines up perfectly.
-      const cx = bed.x + 30 + col * ((bed.w - 60) / 2) + (rng() - 0.5) * 11;
-      const cy = bed.y + 32 + row * ((bed.h - 64) / 2) + (rng() - 0.5) * 9;
+      const cx = innerX + (cols === 1 ? innerW / 2 : (col * innerW) / (cols - 1)) + (rng() - 0.5) * 9;
+      const cy = innerY + (rows === 1 ? innerH / 2 : (row * innerH) / (rows - 1)) + (rng() - 0.5) * 9;
       const r = 12 + rng() * 8;
       const tilt = (rng() - 0.5) * 0.6;
 
@@ -649,7 +665,9 @@ function drawDriveway(ctx: CanvasRenderingContext2D, pad: Rect, rng: () => numbe
   roundRect(ctx, pad.x, pad.y, pad.w, pad.h, 4);
   ctx.stroke();
 
-  drawCar(ctx, pad.x + pad.w / 2, pad.y + 62, '#8f9aa6');
+  // Two cars, parked side by side with the apron by the back door left clear.
+  drawCar(ctx, pad.x + 40, pad.y + 176, '#8f9aa6');
+  drawCar(ctx, pad.x + 112, pad.y + 190, '#6d7a88');
 }
 
 /**
@@ -906,7 +924,7 @@ function buildGround(scale: number): HTMLCanvasElement | null {
     [368, 300, 30],
     [286, 430, 25],
     [520, 476, 22],
-    [96, 690, 27],
+    [206, 660, 24],
   ] as const) {
     ctx.fillStyle = 'rgba(5, 18, 15, 0.42)';
     fluffPath(ctx, sx + sr * 0.22, sy + sr * 0.3, sr * 0.98, sr * 0.7, 7, rng() * 6, 0.12);
@@ -962,10 +980,7 @@ function buildFront(scale: number): HTMLCanvasElement | null {
   const rng = mulberry32(97531);
 
   // String lights strung over the deck, between the house and the rail post.
-  for (const strand of [
-    { x1: 664, y1: 566, x2: 902, y2: 588, sag: 26 },
-    { x1: 672, y1: 690, x2: 900, y2: 664, sag: 22 },
-  ]) {
+  for (const strand of [{ x1: 664, y1: 566, x2: 902, y2: 588, sag: 26 }]) {
     const cx = (strand.x1 + strand.x2) / 2;
     const cy = (strand.y1 + strand.y2) / 2 + strand.sag * 2;
     ctx.strokeStyle = 'rgba(22, 30, 26, 0.62)';
