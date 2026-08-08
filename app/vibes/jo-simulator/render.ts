@@ -1,9 +1,13 @@
 /**
  * Canvas renderer for Jo Simulator.
  *
- * The park itself never changes, so it is baked once into two offscreen layers
- * (ground + foreground framing) at device resolution and blitted each frame.
- * Everything that moves is drawn between them, sorted back-to-front by y.
+ * The yard itself never changes, so it is baked once into two offscreen layers
+ * (ground + overhead) at device resolution and blitted each frame. Everything
+ * that moves is drawn between them, sorted back-to-front by y — which is also
+ * why the tree canopies live in the overhead layer: Jo runs underneath them.
+ *
+ * All the fixed geometry comes from `yard.ts`, so what you see and what you
+ * bump into are the same numbers.
  */
 
 import {
@@ -17,12 +21,57 @@ import {
   type Particle,
   type Squirrel,
 } from './game';
+import {
+  DECKS,
+  DRIVEWAY,
+  FENCES,
+  FENCE_GAPS,
+  HOUSES,
+  MID_FENCE_X,
+  SHED,
+  TOMATO_GARDEN,
+  polyBounds,
+  type House,
+  type Poly,
+  type Rect,
+  type Segment,
+} from './yard';
 
 const UI_FONT = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
-const LAMPS = [
-  { x: 258, y: 196 },
-  { x: WORLD_W - 258, y: 196 },
+/**
+ * Back-door lights and the string lights over the deck. These are what make it
+ * a backyard at dusk rather than a field, and they are baked into the grass as
+ * warm pools and re-applied over anything standing in one.
+ */
+const YARD_LIGHTS = [
+  { x: 986, y: 512, r: 250 },
+  { x: 784, y: 612, r: 205 },
+  { x: 498, y: 656, r: 225 },
+];
+
+/**
+ * Treeline canopies. The real yard is shadier than this, but the trees are held
+ * to the back fence and the far corners — a ball you cannot find under a canopy
+ * is not a fun ball.
+ */
+const TREES: readonly [number, number, number][] = [
+  [176, 58, 104],
+  [428, 72, 120],
+  [700, 50, 98],
+  [986, 62, 106],
+  [1220, 92, 102],
+  [-28, 248, 110],
+  [-14, 470, 94],
+  [1272, 268, 96],
+  [524, 168, 72],
+];
+
+/** The few canopies Jo actually runs beneath — kept sheer so a ball still reads. */
+const OVERHEAD: readonly [number, number, number, number][] = [
+  [376, 62, 126, 0.5],
+  [878, 54, 130, 0.46],
+  [88, 366, 82, 0.4],
 ];
 
 const DELIVER_RING = 76;
@@ -141,28 +190,487 @@ function drawCanopy(ctx: CanvasRenderingContext2D, x: number, y: number, r: numb
   ctx.restore();
 }
 
-function drawHedgeRun(
-  ctx: CanvasRenderingContext2D,
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-  thickness: number,
-  rng: () => number
-): void {
-  const len = Math.hypot(to.x - from.x, to.y - from.y);
-  const steps = Math.ceil(len / (thickness * 0.55));
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const x = from.x + (to.x - from.x) * t + (rng() - 0.5) * thickness * 0.3;
-    const y = from.y + (to.y - from.y) * t + (rng() - 0.5) * thickness * 0.3;
-    const r = thickness * (0.5 + rng() * 0.22);
-    const grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.4, r * 0.1, x, y, r);
-    grad.addColorStop(0, '#2c5a49');
-    grad.addColorStop(0.6, '#1d4137');
-    grad.addColorStop(1, '#132c26');
-    ctx.fillStyle = grad;
-    fluffPath(ctx, x, y, r, r * 0.86, 7, rng() * 6, 0.1);
+function tracePoly(ctx: CanvasRenderingContext2D, poly: Poly, dx = 0, dy = 0): void {
+  ctx.beginPath();
+  ctx.moveTo(poly[0].x + dx, poly[0].y + dy);
+  for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x + dx, poly[i].y + dy);
+  ctx.closePath();
+}
+
+/**
+ * A board fence from above: you see the tops of the pickets as a narrow ribbon,
+ * the posts as thicker caps, and the whole run throwing a shadow east.
+ */
+function drawFenceRun(ctx: CanvasRenderingContext2D, seg: Segment, rng: () => number): void {
+  const dx = seg.x2 - seg.x1;
+  const dy = seg.y2 - seg.y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return;
+  const ux = dx / len;
+  const uy = dy / len;
+  const nx = -uy;
+  const ny = ux;
+
+  ctx.save();
+
+  // Shadow thrown onto whatever the run crosses.
+  ctx.strokeStyle = 'rgba(5, 18, 16, 0.5)';
+  ctx.lineWidth = 20;
+  ctx.lineCap = 'butt';
+  ctx.beginPath();
+  ctx.moveTo(seg.x1 + 9, seg.y1 + 11);
+  ctx.lineTo(seg.x2 + 9, seg.y2 + 11);
+  ctx.stroke();
+
+  // Picket tops, one board at a time so the grain varies down the run.
+  const boards = Math.max(1, Math.round(len / 8));
+  for (let i = 0; i < boards; i++) {
+    const t = (i + 0.5) / boards;
+    const cx = seg.x1 + dx * t;
+    const cy = seg.y1 + dy * t;
+    const half = 7 + rng() * 0.9;
+    const tone = rng();
+    ctx.strokeStyle =
+      tone > 0.82
+        ? '#c39a63'
+        : tone > 0.55
+          ? '#a87f4d'
+          : tone > 0.25
+            ? '#8e6a3f'
+            : '#775734';
+    ctx.lineWidth = (len / boards) * 1.15;
+    ctx.beginPath();
+    ctx.moveTo(cx - nx * half, cy - ny * half);
+    ctx.lineTo(cx + nx * half, cy + ny * half);
+    ctx.stroke();
+  }
+
+  // Weathered highlight along the sunlit lip, shadow along the other.
+  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = 'rgba(240, 214, 168, 0.45)';
+  ctx.beginPath();
+  ctx.moveTo(seg.x1 - nx * 6.4, seg.y1 - ny * 6.4);
+  ctx.lineTo(seg.x2 - nx * 6.4, seg.y2 - ny * 6.4);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(24, 16, 8, 0.6)';
+  ctx.beginPath();
+  ctx.moveTo(seg.x1 + nx * 6.4, seg.y1 + ny * 6.4);
+  ctx.lineTo(seg.x2 + nx * 6.4, seg.y2 + ny * 6.4);
+  ctx.stroke();
+
+  // Posts.
+  const posts = Math.max(2, Math.round(len / 78));
+  for (let i = 0; i <= posts; i++) {
+    const t = i / posts;
+    const cx = seg.x1 + dx * t;
+    const cy = seg.y1 + dy * t;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.atan2(uy, ux));
+    ctx.fillStyle = 'rgba(8, 22, 18, 0.45)';
+    roundRect(ctx, -6, -7, 12, 21, 2);
+    ctx.fill();
+    ctx.fillStyle = '#8b6740';
+    roundRect(ctx, -6, -10, 12, 20, 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(240, 214, 168, 0.5)';
+    roundRect(ctx, -5, -9, 10, 6, 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * A hipped roof seen from directly above: four faces meeting a ridge, shaded so
+ * the north face catches the last of the light and the south face falls away.
+ */
+function drawRoof(ctx: CanvasRenderingContext2D, block: Rect, house: House, rng: () => number): void {
+  const e = house.eaves;
+  const x = block.x - e;
+  const y = block.y - e;
+  const w = block.w + e * 2;
+  const h = block.h + e * 2;
+
+  ctx.save();
+
+  ctx.fillStyle = 'rgba(4, 16, 14, 0.45)';
+  roundRect(ctx, x + 11, y + 15, w, h, 5);
+  ctx.fill();
+
+  const horizontal = w >= h;
+  const inset = Math.min(w, h) / 2;
+  const midX = x + w / 2;
+  const midY = y + h / 2;
+  const rA = horizontal ? { x: x + inset, y: midY } : { x: midX, y: y + inset };
+  const rB = horizontal ? { x: x + w - inset, y: midY } : { x: midX, y: y + h - inset };
+
+  const faces: [{ x: number; y: number }[], string][] = horizontal
+    ? [
+        [[{ x, y }, { x: x + w, y }, rB, rA], house.roofLight],
+        [[{ x, y: y + h }, rA, rB, { x: x + w, y: y + h }], house.roofDark],
+        [[{ x, y }, rA, { x, y: y + h }], house.roofMid],
+        [[{ x: x + w, y }, rB, { x: x + w, y: y + h }], house.roofDark],
+      ]
+    : [
+        [[{ x, y }, { x: x + w, y }, rA], house.roofLight],
+        [[{ x, y: y + h }, { x: x + w, y: y + h }, rB], house.roofDark],
+        [[{ x, y }, rA, rB, { x, y: y + h }], house.roofMid],
+        [[{ x: x + w, y }, rA, rB, { x: x + w, y: y + h }], house.roofDark],
+      ];
+
+  for (const [poly, fill] of faces) {
+    tracePoly(ctx, poly);
+    ctx.fillStyle = fill;
     ctx.fill();
   }
+
+  // Shingle courses, clipped to the roof outline.
+  ctx.save();
+  roundRect(ctx, x, y, w, h, 3);
+  ctx.clip();
+  for (let row = y; row < y + h; row += 9) {
+    ctx.strokeStyle = `rgba(12, 16, 20, ${0.16 + rng() * 0.12})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x, row);
+    ctx.lineTo(x + w, row);
+    ctx.stroke();
+    for (let sx = x + rng() * 18; sx < x + w; sx += 16 + rng() * 10) {
+      ctx.strokeStyle = `rgba(10, 14, 18, ${0.1 + rng() * 0.1})`;
+      ctx.beginPath();
+      ctx.moveTo(sx, row);
+      ctx.lineTo(sx, row + 9);
+      ctx.stroke();
+    }
+  }
+  // Hip lines running corner to ridge.
+  ctx.strokeStyle = 'rgba(255, 250, 240, 0.14)';
+  ctx.lineWidth = 2;
+  for (const [corner, ridge] of [
+    [{ x, y }, rA],
+    [{ x: x + w, y }, horizontal ? rB : rA],
+    [{ x, y: y + h }, horizontal ? rA : rB],
+    [{ x: x + w, y: y + h }, rB],
+  ] as const) {
+    ctx.beginPath();
+    ctx.moveTo(corner.x, corner.y);
+    ctx.lineTo(ridge.x, ridge.y);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Ridge cap.
+  ctx.strokeStyle = house.roofLight;
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(rA.x, rA.y);
+  ctx.lineTo(rB.x, rB.y);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255, 252, 245, 0.22)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(rA.x, rA.y - 1.4);
+  ctx.lineTo(rB.x, rB.y - 1.4);
+  ctx.stroke();
+
+  // Gutter around the eaves.
+  ctx.strokeStyle = 'rgba(232, 232, 226, 0.32)';
+  ctx.lineWidth = 2.4;
+  roundRect(ctx, x, y, w, h, 3);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(6, 12, 16, 0.5)';
+  ctx.lineWidth = 1.2;
+  roundRect(ctx, x + 2.5, y + 2.5, w - 5, h - 5, 2);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/** Planked decking, railed everywhere except the edge that meets the house. */
+function drawDeck(ctx: CanvasRenderingContext2D, poly: Poly, rng: () => number): void {
+  const box = polyBounds(poly);
+
+  ctx.save();
+
+  tracePoly(ctx, poly, 9, 12);
+  ctx.fillStyle = 'rgba(5, 18, 16, 0.44)';
+  ctx.fill();
+
+  tracePoly(ctx, poly);
+  ctx.fillStyle = '#8a6a45';
+  ctx.fill();
+
+  ctx.save();
+  tracePoly(ctx, poly);
+  ctx.clip();
+  // Boards run across the deck, with a dark reveal between each.
+  for (let y = box.minY; y < box.maxY; y += 13) {
+    const tone = rng();
+    ctx.fillStyle =
+      tone > 0.78 ? '#a2814f' : tone > 0.5 ? '#8f6d47' : tone > 0.22 ? '#7d5d3c' : '#6d5034';
+    ctx.fillRect(box.minX - 4, y, box.maxX - box.minX + 8, 11);
+    ctx.fillStyle = 'rgba(28, 18, 10, 0.55)';
+    ctx.fillRect(box.minX - 4, y + 11, box.maxX - box.minX + 8, 2);
+    // Grain.
+    for (let i = 0; i < 5; i++) {
+      const gx = box.minX + rng() * (box.maxX - box.minX);
+      ctx.strokeStyle = `rgba(44, 28, 14, ${0.1 + rng() * 0.14})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(gx, y + 2 + rng() * 7);
+      ctx.lineTo(gx + 18 + rng() * 40, y + 2 + rng() * 7);
+      ctx.stroke();
+    }
+  }
+  // Ambient occlusion hugging the edge.
+  ctx.strokeStyle = 'rgba(24, 14, 6, 0.5)';
+  ctx.lineWidth = 9;
+  tracePoly(ctx, poly);
+  ctx.stroke();
+  ctx.restore();
+
+  // Trim.
+  ctx.strokeStyle = 'rgba(214, 178, 124, 0.4)';
+  ctx.lineWidth = 2;
+  tracePoly(ctx, poly);
+  ctx.stroke();
+
+  // Railing on every edge except the one against the house.
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    if ((a.y + b.y) / 2 > box.maxY - 14) continue;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    ctx.strokeStyle = 'rgba(10, 24, 20, 0.4)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(a.x + 3, a.y + 4);
+    ctx.lineTo(b.x + 3, b.y + 4);
+    ctx.stroke();
+    ctx.strokeStyle = '#c6a374';
+    ctx.lineWidth = 3.4;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    const posts = Math.max(1, Math.round(len / 34));
+    for (let p = 0; p <= posts; p++) {
+      const t = p / posts;
+      ctx.fillStyle = '#8d6c46';
+      circle(ctx, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, 3);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(232, 206, 166, 0.55)';
+      circle(ctx, a.x + (b.x - a.x) * t - 0.7, a.y + (b.y - a.y) * t - 0.9, 1.4);
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+
+/** The tomato patch: tilled rows, wire cages, and fruit worth guarding. */
+function drawTomatoGarden(ctx: CanvasRenderingContext2D, bed: Rect, rng: () => number): void {
+  ctx.save();
+
+  ctx.fillStyle = 'rgba(5, 18, 16, 0.4)';
+  roundRect(ctx, bed.x + 6, bed.y + 9, bed.w, bed.h, 8);
+  ctx.fill();
+
+  // Timber edging.
+  ctx.fillStyle = '#6b4f31';
+  roundRect(ctx, bed.x, bed.y, bed.w, bed.h, 7);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(226, 197, 148, 0.22)';
+  roundRect(ctx, bed.x, bed.y, bed.w, 5, 3);
+  ctx.fill();
+
+  // Soil.
+  ctx.save();
+  roundRect(ctx, bed.x + 7, bed.y + 7, bed.w - 14, bed.h - 14, 4);
+  ctx.clip();
+  const soil = ctx.createLinearGradient(bed.x, bed.y, bed.x, bed.y + bed.h);
+  soil.addColorStop(0, '#3d2b1d');
+  soil.addColorStop(1, '#2c1f15');
+  ctx.fillStyle = soil;
+  ctx.fillRect(bed.x, bed.y, bed.w, bed.h);
+  for (let i = 0; i < 420; i++) {
+    const px = bed.x + rng() * bed.w;
+    const py = bed.y + rng() * bed.h;
+    ctx.fillStyle = rng() > 0.5 ? 'rgba(96, 70, 46, 0.4)' : 'rgba(16, 11, 7, 0.42)';
+    ctx.fillRect(px, py, 2.2, 1.6);
+  }
+  // Hoed furrows.
+  for (let row = bed.y + 18; row < bed.y + bed.h - 8; row += 34) {
+    ctx.strokeStyle = 'rgba(14, 9, 6, 0.35)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(bed.x + 4, row);
+    ctx.lineTo(bed.x + bed.w - 4, row);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Plants in three rows of three.
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      // Planted by hand, so nothing lines up perfectly.
+      const cx = bed.x + 30 + col * ((bed.w - 60) / 2) + (rng() - 0.5) * 11;
+      const cy = bed.y + 32 + row * ((bed.h - 64) / 2) + (rng() - 0.5) * 9;
+      const r = 12 + rng() * 8;
+      const tilt = (rng() - 0.5) * 0.6;
+
+      ctx.fillStyle = 'rgba(6, 16, 12, 0.45)';
+      ellipse(ctx, cx + 4, cy + 6, r * 0.9, r * 0.55);
+      ctx.fill();
+
+      // Cage, drawn behind the foliage so the wire peeks through.
+      ctx.strokeStyle = 'rgba(176, 184, 190, 0.42)';
+      ctx.lineWidth = 1.2;
+      for (const ring of [r * 1.1, r * 0.64]) {
+        ellipse(ctx, cx, cy, ring, ring * (0.82 + rng() * 0.16), tilt);
+        ctx.stroke();
+      }
+
+      const leaf = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.35, r * 0.15, cx, cy, r);
+      leaf.addColorStop(0, rng() > 0.5 ? '#65a352' : '#578f49');
+      leaf.addColorStop(0.6, '#3f7338');
+      leaf.addColorStop(1, '#2a5028');
+      ctx.fillStyle = leaf;
+      fluffPath(ctx, cx, cy, r, r * (0.82 + rng() * 0.2), 7 + Math.floor(rng() * 3), rng() * 6, 0.2);
+      ctx.fill();
+
+      // Stake and the fruit it is holding up.
+      ctx.strokeStyle = 'rgba(150, 160, 166, 0.55)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(cx + r * 0.75, cy - r * 0.8);
+      ctx.lineTo(cx + r * 0.75, cy + r * 0.8);
+      ctx.stroke();
+
+      const fruit = 3 + Math.floor(rng() * 3);
+      for (let i = 0; i < fruit; i++) {
+        const a = rng() * Math.PI * 2;
+        const d = rng() * r * 0.7;
+        const fx = cx + Math.cos(a) * d;
+        const fy = cy + Math.sin(a) * d;
+        const fr = 2.6 + rng() * 1.6;
+        ctx.fillStyle = rng() > 0.24 ? '#d4453c' : '#dd8b3a';
+        circle(ctx, fx, fy, fr);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 226, 206, 0.6)';
+        circle(ctx, fx - fr * 0.3, fy - fr * 0.35, fr * 0.34);
+        ctx.fill();
+      }
+    }
+  }
+
+  ctx.restore();
+}
+
+/** Top-down parked car for the driveway. */
+function drawCar(ctx: CanvasRenderingContext2D, x: number, y: number, body: string): void {
+  ctx.save();
+  ctx.translate(x, y);
+
+  ctx.fillStyle = 'rgba(4, 12, 16, 0.45)';
+  roundRect(ctx, -22, -40, 46, 84, 12);
+  ctx.fill();
+
+  ctx.fillStyle = '#1b1f24';
+  for (const wy of [-24, 24]) {
+    roundRect(ctx, -26, wy - 7, 8, 15, 3);
+    ctx.fill();
+    roundRect(ctx, 18, wy - 7, 8, 15, 3);
+    ctx.fill();
+  }
+
+  const paint = ctx.createLinearGradient(-24, 0, 24, 0);
+  paint.addColorStop(0, body);
+  paint.addColorStop(0.42, '#ffffff');
+  paint.addColorStop(1, body);
+  ctx.fillStyle = paint;
+  ctx.globalAlpha = 0.92;
+  roundRect(ctx, -24, -42, 48, 84, 13);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.strokeStyle = 'rgba(10, 16, 22, 0.5)';
+  ctx.lineWidth = 1.4;
+  roundRect(ctx, -24, -42, 48, 84, 13);
+  ctx.stroke();
+
+  // Glass.
+  ctx.fillStyle = 'rgba(38, 54, 70, 0.85)';
+  roundRect(ctx, -19, -30, 38, 16, 6);
+  ctx.fill();
+  roundRect(ctx, -19, 16, 38, 15, 6);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(30, 42, 56, 0.7)';
+  roundRect(ctx, -20, -12, 40, 26, 5);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+  roundRect(ctx, -17, -28, 15, 11, 4);
+  ctx.fill();
+
+  // Lights.
+  ctx.fillStyle = 'rgba(255, 244, 214, 0.6)';
+  roundRect(ctx, -18, -41, 11, 4, 2);
+  ctx.fill();
+  roundRect(ctx, 7, -41, 11, 4, 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(214, 74, 62, 0.65)';
+  roundRect(ctx, -18, 38, 11, 4, 2);
+  ctx.fill();
+  roundRect(ctx, 7, 38, 11, 4, 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawDriveway(ctx: CanvasRenderingContext2D, pad: Rect, rng: () => number): void {
+  ctx.save();
+  roundRect(ctx, pad.x, pad.y, pad.w, pad.h, 4);
+  ctx.clip();
+  const asphalt = ctx.createLinearGradient(pad.x, pad.y, pad.x + pad.w, pad.y + pad.h);
+  asphalt.addColorStop(0, '#3b3f44');
+  asphalt.addColorStop(1, '#2d3136');
+  ctx.fillStyle = asphalt;
+  ctx.fillRect(pad.x, pad.y, pad.w, pad.h);
+  for (let i = 0; i < 900; i++) {
+    ctx.fillStyle = rng() > 0.5 ? 'rgba(150, 152, 156, 0.16)' : 'rgba(16, 18, 20, 0.3)';
+    ctx.fillRect(pad.x + rng() * pad.w, pad.y + rng() * pad.h, 2, 2);
+  }
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(10, 20, 18, 0.5)';
+  ctx.lineWidth = 3;
+  roundRect(ctx, pad.x, pad.y, pad.w, pad.h, 4);
+  ctx.stroke();
+
+  drawCar(ctx, pad.x + pad.w / 2, pad.y + 62, '#8f9aa6');
+}
+
+/**
+ * Grass walked thin — the gap crossings and the throwing spot. Deliberately
+ * closer to tired lawn than to bare mud, or it reads as paint on the grass.
+ */
+function drawWear(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  alpha: number
+): void {
+  const grad = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry));
+  grad.addColorStop(0, `rgba(122, 112, 74, ${alpha})`);
+  grad.addColorStop(0.55, `rgba(104, 96, 66, ${alpha * 0.45})`);
+  grad.addColorStop(1, 'rgba(96, 90, 62, 0)');
+  ctx.fillStyle = grad;
+  ellipse(ctx, x, y, rx, ry);
+  ctx.fill();
 }
 
 function buildGround(scale: number): HTMLCanvasElement | null {
@@ -171,24 +679,40 @@ function buildGround(scale: number): HTMLCanvasElement | null {
   const { canvas, ctx } = layer;
   const rng = mulberry32(20260728);
 
-  // Lawn base — cooler and darker toward the treeline.
+  // Lawn base — cooler and darker toward the treeline at the back fence.
   const base = ctx.createLinearGradient(0, 0, 0, WORLD_H);
-  base.addColorStop(0, '#16332c');
-  base.addColorStop(0.45, '#20463b');
-  base.addColorStop(1, '#2a5648');
+  base.addColorStop(0, '#1d4034');
+  base.addColorStop(0.45, '#2c5b49');
+  base.addColorStop(1, '#376b56');
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, WORLD_W, WORLD_H);
 
-  // Mower stripes.
-  ctx.save();
-  ctx.translate(WORLD_W / 2, WORLD_H / 2);
-  ctx.rotate(-0.13);
-  ctx.translate(-WORLD_W / 2, -WORLD_H / 2);
-  for (let x = -300; x < WORLD_W + 300; x += 132) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.022)';
-    ctx.fillRect(x, -300, 66, WORLD_H + 600);
+  // The far yard is the shadier, less-fussed-over one.
+  const shade = ctx.createLinearGradient(0, 0, MID_FENCE_X, 0);
+  shade.addColorStop(0, 'rgba(8, 26, 24, 0.22)');
+  shade.addColorStop(1, 'rgba(8, 26, 24, 0.06)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(0, 0, MID_FENCE_X, WORLD_H);
+
+  // Two households, two mowers, two directions. Nothing gives away a shared
+  // fence line faster than stripes that do not line up across it.
+  for (const yard of [
+    { x: 0, w: MID_FENCE_X, angle: -0.13, tint: 'rgba(180, 235, 190, 0.03)' },
+    { x: MID_FENCE_X, w: WORLD_W - MID_FENCE_X, angle: 0.42, tint: 'rgba(255, 255, 255, 0.025)' },
+  ]) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(yard.x, 0, yard.w, WORLD_H);
+    ctx.clip();
+    ctx.translate(WORLD_W / 2, WORLD_H / 2);
+    ctx.rotate(yard.angle);
+    ctx.translate(-WORLD_W / 2, -WORLD_H / 2);
+    for (let x = -600; x < WORLD_W + 600; x += 124) {
+      ctx.fillStyle = yard.tint;
+      ctx.fillRect(x, -600, 62, WORLD_H + 1200);
+    }
+    ctx.restore();
   }
-  ctx.restore();
 
   // Uneven patches so the lawn is not a flat field of colour.
   for (let i = 0; i < 26; i++) {
@@ -203,53 +727,6 @@ function buildGround(scale: number): HTMLCanvasElement | null {
     circle(ctx, x, y, r);
     ctx.fill();
   }
-
-  // Gravel path curving across the upper lawn.
-  ctx.save();
-  ctx.lineCap = 'round';
-  const pathPoints: [number, number][] = [
-    [-60, 268],
-    [300, 186],
-    [640, 244],
-    [1000, 178],
-    [WORLD_W + 60, 250],
-  ];
-  const tracePath = () => {
-    ctx.beginPath();
-    ctx.moveTo(pathPoints[0][0], pathPoints[0][1]);
-    for (let i = 1; i < pathPoints.length - 1; i++) {
-      const [x1, y1] = pathPoints[i];
-      const [x2, y2] = pathPoints[i + 1];
-      ctx.quadraticCurveTo(x1, y1, (x1 + x2) / 2, (y1 + y2) / 2);
-    }
-    ctx.lineTo(pathPoints[pathPoints.length - 1][0], pathPoints[pathPoints.length - 1][1]);
-  };
-  ctx.strokeStyle = 'rgba(8, 22, 20, 0.45)';
-  ctx.lineWidth = 60;
-  tracePath();
-  ctx.stroke();
-  ctx.strokeStyle = '#585a55';
-  ctx.lineWidth = 50;
-  tracePath();
-  ctx.stroke();
-  ctx.strokeStyle = 'rgba(126, 128, 118, 0.45)';
-  ctx.lineWidth = 38;
-  tracePath();
-  ctx.stroke();
-  // Gravel speckle, clipped to the path itself.
-  ctx.save();
-  ctx.lineWidth = 50;
-  tracePath();
-  ctx.strokeStyle = '#000';
-  ctx.globalCompositeOperation = 'source-atop';
-  for (let i = 0; i < 1600; i++) {
-    const x = rng() * WORLD_W;
-    const y = 130 + rng() * 190;
-    ctx.fillStyle = rng() > 0.5 ? 'rgba(196, 194, 178, 0.32)' : 'rgba(34, 34, 30, 0.32)';
-    ctx.fillRect(x, y, 1.8, 1.8);
-  }
-  ctx.restore();
-  ctx.restore();
 
   // Grass blades — the texture that keeps the lawn from looking like paper.
   for (let i = 0; i < 5200; i++) {
@@ -318,124 +795,162 @@ function buildGround(scale: number): HTMLCanvasElement | null {
     }
   }
 
-  // Hedge border framing the lawn, with trees breaking the line.
-  drawHedgeRun(ctx, { x: -40, y: 34 }, { x: WORLD_W + 40, y: 34 }, 74, rng);
-  drawHedgeRun(ctx, { x: -30, y: 60 }, { x: -30, y: WORLD_H + 30 }, 78, rng);
-  drawHedgeRun(ctx, { x: WORLD_W + 30, y: 60 }, { x: WORLD_W + 30, y: WORLD_H + 30 }, 78, rng);
-  drawHedgeRun(ctx, { x: -40, y: WORLD_H + 24 }, { x: WORLD_W + 40, y: WORLD_H + 24 }, 66, rng);
+  // Bare earth where the grass loses: the two fence gaps get walked through
+  // constantly, and so does the spot the ball is thrown from.
+  for (const gap of FENCE_GAPS) {
+    const cy = gap.y + gap.height / 2;
+    // A desire line either side, strongest at the gap and fading into the lawn.
+    for (let i = -6; i <= 6; i++) {
+      const t = i / 6;
+      const fade = 1 - t * t;
+      drawWear(
+        ctx,
+        MID_FENCE_X + t * 108,
+        cy + Math.sin(t * 2.2) * 10,
+        30,
+        gap.height * 0.3 * (0.55 + fade * 0.5),
+        0.06 + fade * 0.09
+      );
+    }
+  }
+  drawWear(ctx, OWNER_POS.x, OWNER_POS.y + 6, 74, 48, 0.2);
 
-  const trees: [number, number, number][] = [
-    [96, 18, 84],
-    [372, 6, 96],
-    [700, 20, 78],
-    [1010, 4, 92],
-    [1244, 34, 86],
-    [-16, 300, 96],
-    [-8, 596, 88],
-    [WORLD_W + 12, 372, 100],
-    [WORLD_W + 6, 660, 86],
-  ];
-  for (const [x, y, r] of trees) drawCanopy(ctx, x, y, r, rng);
+  drawTomatoGarden(ctx, TOMATO_GARDEN, rng);
+  drawDriveway(ctx, DRIVEWAY, rng);
 
-  // Lampposts: baked warm pools on the grass, post caps on top.
-  for (const lamp of LAMPS) {
-    const pool = ctx.createRadialGradient(lamp.x, lamp.y + 24, 8, lamp.x, lamp.y + 24, 250);
-    pool.addColorStop(0, 'rgba(255, 205, 130, 0.3)');
-    pool.addColorStop(0.35, 'rgba(255, 190, 118, 0.14)');
-    pool.addColorStop(1, 'rgba(255, 180, 110, 0)');
-    ctx.fillStyle = pool;
-    ellipse(ctx, lamp.x, lamp.y + 24, 250, 190);
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(6, 20, 18, 0.4)';
-    ellipse(ctx, lamp.x + 10, lamp.y + 12, 26, 10);
-    ctx.fill();
-    ctx.fillStyle = '#2a3038';
-    ellipse(ctx, lamp.x, lamp.y + 6, 12, 6);
-    ctx.fill();
-    ctx.fillStyle = '#3a424c';
-    ellipse(ctx, lamp.x, lamp.y - 2, 9, 5);
-    ctx.fill();
-    const bulb = ctx.createRadialGradient(lamp.x, lamp.y - 6, 1, lamp.x, lamp.y - 6, 26);
-    bulb.addColorStop(0, 'rgba(255, 240, 200, 0.95)');
-    bulb.addColorStop(0.3, 'rgba(255, 208, 130, 0.5)');
-    bulb.addColorStop(1, 'rgba(255, 190, 110, 0)');
-    ctx.fillStyle = bulb;
-    circle(ctx, lamp.x, lamp.y - 6, 26);
-    ctx.fill();
+  for (const deck of DECKS) drawDeck(ctx, deck, rng);
+  for (const house of HOUSES) {
+    for (const block of house.blocks) drawRoof(ctx, block, house, rng);
   }
 
-  // Picnic blanket, spread out beside where the owner stands.
+  // Patio set and the grill, out on the near deck.
   ctx.save();
-  ctx.translate(OWNER_POS.x + 210, OWNER_POS.y + 34);
-  ctx.rotate(-0.09);
-  ctx.fillStyle = 'rgba(6, 20, 18, 0.35)';
-  roundRect(ctx, -88, -50, 184, 104, 12);
+  ctx.translate(710, 624);
+  ctx.fillStyle = 'rgba(8, 16, 12, 0.4)';
+  ellipse(ctx, 5, 7, 30, 19);
   ctx.fill();
-  ctx.fillStyle = '#cec2ab';
-  roundRect(ctx, -92, -54, 184, 104, 10);
-  ctx.fill();
-  ctx.save();
-  roundRect(ctx, -92, -54, 184, 104, 10);
-  ctx.clip();
-  ctx.fillStyle = 'rgba(148, 54, 60, 0.8)';
-  for (let x = -92; x < 92; x += 34) ctx.fillRect(x, -54, 17, 104);
-  for (let y = -54; y < 50; y += 34) ctx.fillRect(-92, y, 184, 17);
-  ctx.fillStyle = 'rgba(96, 28, 34, 0.5)';
-  for (let x = -92; x < 92; x += 34) {
-    for (let y = -54; y < 50; y += 34) ctx.fillRect(x, y, 17, 17);
+  for (const a of [0, 1.25, 2.5, 3.75, 5]) {
+    ctx.fillStyle = '#4a5e6e';
+    ellipse(ctx, Math.cos(a) * 38, Math.sin(a) * 26, 9, 7);
+    ctx.fill();
   }
-  ctx.restore();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-  ctx.lineWidth = 1.5;
-  roundRect(ctx, -92, -54, 184, 104, 10);
+  const table = ctx.createRadialGradient(-8, -8, 3, 0, 0, 30);
+  table.addColorStop(0, '#8fa2b4');
+  table.addColorStop(1, '#5d6d7c');
+  ctx.fillStyle = table;
+  ellipse(ctx, 0, 0, 30, 20);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(12, 22, 28, 0.5)';
+  ctx.lineWidth = 1.6;
+  ellipse(ctx, 0, 0, 30, 20);
   ctx.stroke();
-
-  // Basket and a thermos on the blanket.
-  ctx.fillStyle = 'rgba(6, 20, 18, 0.3)';
-  ellipse(ctx, 56, 26, 20, 11);
-  ctx.fill();
-  ctx.fillStyle = '#8a6335';
-  ellipse(ctx, 53, 23, 18, 11.5);
-  ctx.fill();
-  ctx.fillStyle = '#a3773f';
-  ellipse(ctx, 53, 21, 15, 9);
-  ctx.fill();
-  ctx.strokeStyle = '#6f4f28';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.ellipse(53, 21, 15, 9, 0, Math.PI * 0.15, Math.PI * 0.85);
-  ctx.stroke();
-  ctx.fillStyle = '#5f7cae';
-  roundRect(ctx, -72, 4, 13, 27, 5);
-  ctx.fill();
-  ctx.fillStyle = '#8fa8d2';
-  roundRect(ctx, -72, 4, 13, 7, 4);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+  ellipse(ctx, -8, -6, 14, 8);
   ctx.fill();
   ctx.restore();
 
-  // Park bench tucked against the left hedge.
+  // Grill.
   ctx.save();
-  ctx.translate(150, 620);
-  ctx.rotate(0.16);
-  ctx.fillStyle = 'rgba(6, 20, 18, 0.35)';
-  roundRect(ctx, -46, -16, 96, 44, 6);
+  ctx.translate(862, 606);
+  ctx.fillStyle = 'rgba(8, 16, 12, 0.42)';
+  roundRect(ctx, -17, -12, 40, 30, 8);
   ctx.fill();
-  ctx.fillStyle = '#6b5039';
-  roundRect(ctx, -50, -20, 96, 40, 5);
+  ctx.fillStyle = '#22262b';
+  roundRect(ctx, -20, -16, 40, 30, 8);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(30, 20, 12, 0.5)';
-  ctx.lineWidth = 2;
-  for (let i = -50; i < 46; i += 12) {
+  ctx.fillStyle = '#33383f';
+  ellipse(ctx, 0, -1, 15, 10);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(150, 158, 168, 0.5)';
+  ctx.lineWidth = 1.2;
+  for (let i = -9; i <= 9; i += 4.5) {
     ctx.beginPath();
-    ctx.moveTo(i, -20);
-    ctx.lineTo(i, 20);
+    ctx.moveTo(i, -8);
+    ctx.lineTo(i, 6);
     ctx.stroke();
   }
-  ctx.fillStyle = '#83654a';
-  roundRect(ctx, -50, -20, 96, 12, 5);
+  ctx.restore();
+
+  // Hose reel parked against the near house, with the tail end trailing off.
+  ctx.save();
+  ctx.translate(962, 522);
+  ctx.fillStyle = 'rgba(8, 22, 18, 0.42)';
+  ellipse(ctx, 3, 5, 16, 11);
+  ctx.fill();
+  ctx.strokeStyle = '#2f6a4d';
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(11, 6);
+  ctx.quadraticCurveTo(34, 16, 22, 32);
+  ctx.stroke();
+  ctx.fillStyle = '#3f4a52';
+  ellipse(ctx, 0, 0, 15, 10);
+  ctx.fill();
+  ctx.strokeStyle = '#35734f';
+  ctx.lineWidth = 2.2;
+  for (const r of [11, 7.5, 4] as const) {
+    ellipse(ctx, 0, 0, r, r * 0.68);
+    ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(226, 234, 240, 0.35)';
+  ellipse(ctx, -4, -4, 5, 3);
   ctx.fill();
   ctx.restore();
+
+  // Shrubs along the far yard's fence lines, the way a lawn actually gets
+  // broken up — and something for Jo to cut around on the way to a gap.
+  for (const [sx, sy, sr] of [
+    [72, 208, 26],
+    [66, 300, 21],
+    [252, 62, 24],
+    [368, 300, 30],
+    [286, 430, 25],
+    [520, 476, 22],
+    [96, 690, 27],
+  ] as const) {
+    ctx.fillStyle = 'rgba(5, 18, 15, 0.42)';
+    fluffPath(ctx, sx + sr * 0.22, sy + sr * 0.3, sr * 0.98, sr * 0.7, 7, rng() * 6, 0.12);
+    ctx.fill();
+    const bush = ctx.createRadialGradient(sx - sr * 0.35, sy - sr * 0.4, sr * 0.12, sx, sy, sr);
+    bush.addColorStop(0, '#4c8a63');
+    bush.addColorStop(0.6, '#2f6349');
+    bush.addColorStop(1, '#1d4535');
+    ctx.fillStyle = bush;
+    fluffPath(ctx, sx, sy, sr, sr * 0.86, 8, rng() * 6, 0.16);
+    ctx.fill();
+    for (let i = 0; i < 4; i++) {
+      const a = rng() * Math.PI * 2;
+      const d = rng() * sr * 0.5;
+      ctx.fillStyle = `rgba(122, 178, 138, ${0.14 + rng() * 0.16})`;
+      fluffPath(ctx, sx + Math.cos(a) * d - sr * 0.1, sy + Math.sin(a) * d - sr * 0.16, sr * 0.3, sr * 0.24, 6, rng() * 6, 0.14);
+      ctx.fill();
+    }
+  }
+
+  // Garden shed in the back corner.
+  drawRoof(ctx, SHED, { name: 'shed', blocks: [], eaves: 8, roofLight: '#6a6257', roofMid: '#544d45', roofDark: '#3d3832' }, rng);
+
+  for (const seg of FENCES) drawFenceRun(ctx, seg, rng);
+
+  // Treeline. The ground shadow goes down here; the canopy itself is baked
+  // into the overhead layer so Jo passes underneath it.
+  for (const [x, y, r] of TREES) drawCanopy(ctx, x, y, r, rng);
+  for (const [x, y, r] of OVERHEAD) {
+    ctx.fillStyle = 'rgba(4, 16, 14, 0.3)';
+    fluffPath(ctx, x + r * 0.16, y + r * 0.2, r * 0.96, r * 0.88, 7, rng() * 6, 0.09);
+    ctx.fill();
+  }
+
+  // Warm pools from the back-door lights and the string lights over the deck.
+  for (const light of YARD_LIGHTS) {
+    const pool = ctx.createRadialGradient(light.x, light.y, 8, light.x, light.y, light.r);
+    pool.addColorStop(0, 'rgba(255, 205, 130, 0.28)');
+    pool.addColorStop(0.35, 'rgba(255, 190, 118, 0.13)');
+    pool.addColorStop(1, 'rgba(255, 180, 110, 0)');
+    ctx.fillStyle = pool;
+    ellipse(ctx, light.x, light.y, light.r, light.r * 0.76);
+    ctx.fill();
+  }
 
   return canvas;
 }
@@ -446,19 +961,45 @@ function buildFront(scale: number): HTMLCanvasElement | null {
   const { canvas, ctx } = layer;
   const rng = mulberry32(97531);
 
-  // Blades of grass right at the camera, blurred by being drawn dark and soft.
-  for (let i = 0; i < 260; i++) {
-    const x = rng() * WORLD_W;
-    const y = WORLD_H + 6;
-    const h = 18 + rng() * 34;
-    const lean = (rng() - 0.5) * 22;
-    ctx.strokeStyle = `rgba(9, 26, 22, ${0.32 + rng() * 0.36})`;
-    ctx.lineWidth = 2 + rng() * 3.5;
-    ctx.lineCap = 'round';
+  // String lights strung over the deck, between the house and the rail post.
+  for (const strand of [
+    { x1: 664, y1: 566, x2: 902, y2: 588, sag: 26 },
+    { x1: 672, y1: 690, x2: 900, y2: 664, sag: 22 },
+  ]) {
+    const cx = (strand.x1 + strand.x2) / 2;
+    const cy = (strand.y1 + strand.y2) / 2 + strand.sag * 2;
+    ctx.strokeStyle = 'rgba(22, 30, 26, 0.62)';
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.quadraticCurveTo(x + lean * 0.4, y - h * 0.6, x + lean, y - h);
+    ctx.moveTo(strand.x1, strand.y1);
+    ctx.quadraticCurveTo(cx, cy, strand.x2, strand.y2);
     ctx.stroke();
+
+    const bulbs = 11;
+    for (let i = 1; i < bulbs; i++) {
+      const t = i / bulbs;
+      const mt = 1 - t;
+      const bx = mt * mt * strand.x1 + 2 * mt * t * cx + t * t * strand.x2;
+      const by = mt * mt * strand.y1 + 2 * mt * t * cy + t * t * strand.y2 + 4;
+      const glow = ctx.createRadialGradient(bx, by, 0, bx, by, 13);
+      glow.addColorStop(0, 'rgba(255, 232, 170, 0.85)');
+      glow.addColorStop(0.3, 'rgba(255, 206, 128, 0.35)');
+      glow.addColorStop(1, 'rgba(255, 196, 118, 0)');
+      ctx.fillStyle = glow;
+      circle(ctx, bx, by, 13);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 246, 214, 0.95)';
+      circle(ctx, bx, by, 2.1);
+      ctx.fill();
+    }
+  }
+
+  // The canopies Jo runs beneath, kept sheer enough to see a ball through.
+  for (const [x, y, r, alpha] of OVERHEAD) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    drawCanopy(ctx, x, y, r, rng);
+    ctx.restore();
   }
 
   // Vignette.
@@ -1120,15 +1661,15 @@ export function render(ctx: CanvasRenderingContext2D, g: Game, scale: number): v
     ctx.restore();
   }
 
-  // Warm light spilling over anything standing in a lamp pool.
+  // Warm light spilling over anything standing in one of the pools.
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  for (const lamp of LAMPS) {
-    const pool = ctx.createRadialGradient(lamp.x, lamp.y + 24, 10, lamp.x, lamp.y + 24, 230);
-    pool.addColorStop(0, 'rgba(255, 196, 122, 0.09)');
+  for (const light of YARD_LIGHTS) {
+    const pool = ctx.createRadialGradient(light.x, light.y, 10, light.x, light.y, light.r * 0.92);
+    pool.addColorStop(0, 'rgba(255, 196, 122, 0.085)');
     pool.addColorStop(1, 'rgba(255, 180, 110, 0)');
     ctx.fillStyle = pool;
-    ellipse(ctx, lamp.x, lamp.y + 24, 230, 180);
+    ellipse(ctx, light.x, light.y, light.r * 0.92, light.r * 0.72);
     ctx.fill();
   }
 

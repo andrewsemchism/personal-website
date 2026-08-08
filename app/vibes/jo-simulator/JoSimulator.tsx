@@ -530,7 +530,7 @@ export default function JoSimulator() {
             >
               <div className="max-w-lg text-center">
                 <p className="mb-2 font-sans text-[11px] uppercase tracking-[0.22em] text-[#8fa3c4]">
-                  Park · sumrak · jedna pudlica
+                  Dvorište · sumrak · jedna pudlica
                 </p>
                 <h2 className="mb-2 bg-[linear-gradient(100deg,rgba(168,189,224,0.75)_20%,rgba(255,255,255,1)_50%,rgba(168,189,224,0.75)_80%)] bg-clip-text font-mono text-4xl font-bold text-transparent sm:text-6xl">
                   <span className={styles.sheen}>Jo Simulator</span>
@@ -541,7 +541,8 @@ export default function JoSimulator() {
                 <p className="mx-auto mb-5 max-w-md font-sans text-sm text-[#8fa3c4]">
                   You are Jo, a white miniature poodle in a Miami clip. Fetch every{' '}
                   <em className="not-italic text-[#a8bde0]">loptica</em> your owner throws and carry it back.
-                  Each delivery buys more time — squirrels will try to take it first.
+                  Two yards, one shared fence — and two gaps in it worth knowing. Each delivery buys more
+                  time; squirrels will try to take it first.
                 </p>
 
                 <button

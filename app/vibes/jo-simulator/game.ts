@@ -7,14 +7,30 @@
  */
 
 import type { Sfx } from './audio';
+import {
+  FENCE_GAPS,
+  FENCE_HEIGHT,
+  MID_FENCE_X,
+  WORLD_H,
+  WORLD_W,
+  isOpenGround,
+  resolveCircle,
+  type Vec,
+} from './yard';
 
-export const WORLD_W = 1280;
-export const WORLD_H = 800;
+export { WORLD_H, WORLD_W };
 
 /** Jo, the balls and the squirrels all stay inside this — it keeps the treeline clear. */
-export const BOUNDS = { minX: 74, maxX: WORLD_W - 74, minY: 92, maxY: WORLD_H - 96 };
+export const BOUNDS = { minX: 56, maxX: WORLD_W - 44, minY: 56, maxY: 758 };
 
-export const OWNER_POS = { x: WORLD_W / 2, y: WORLD_H - 132 };
+/** Where the ball gets thrown from: the patch of grass off the near house's back door. */
+export const OWNER_POS = { x: 857, y: 476 };
+
+const DOG_RADIUS = 26;
+const BALL_RADIUS = 13;
+
+/** Balls sent over the middle fence, once Jo has the hang of the near yard. */
+const CROSS_YARD_CHANCE = 0.28;
 
 export const RUN_SECONDS = 45;
 export const MAX_TIME = 60;
@@ -386,21 +402,43 @@ function ballsWanted(g: Game): number {
   return 1;
 }
 
-function throwBall(g: Game): void {
-  // Aim into the open field, biased away from wherever Jo already is.
-  let best = { x: OWNER_POS.x, y: OWNER_POS.y - 400, score: -Infinity };
-  for (let i = 0; i < 6; i++) {
-    const angle = rand(-Math.PI + 0.5, -0.5);
-    const dist = rand(330, 560);
-    const x = clamp(OWNER_POS.x + Math.cos(angle) * dist, BOUNDS.minX + 40, BOUNDS.maxX - 40);
-    const y = clamp(OWNER_POS.y + Math.sin(angle) * dist, BOUNDS.minY + 40, BOUNDS.maxY - 40);
-    const fromDog = Math.hypot(x - g.dog.x, y - g.dog.y);
-    const score = fromDog + dist * 0.4;
-    if (score > best.score) best = { x, y, score };
+/**
+ * Somewhere on the grass worth running to: clear of every wall, well away from
+ * the owner's feet, and biased away from wherever Jo is standing.
+ *
+ * Roughly a quarter of throws are sent over the middle fence once Jo has warmed
+ * up, which is the whole reason those two gaps matter.
+ */
+function pickThrowTarget(g: Game): Vec {
+  const crossYard = g.deliveries >= 2 && Math.random() < CROSS_YARD_CHANCE;
+  const minX = crossYard ? 90 : MID_FENCE_X + 50;
+  const maxX = crossYard ? MID_FENCE_X - 60 : 1210;
+  const maxY = crossYard ? 690 : 520;
+
+  let best: Vec | null = null;
+  let bestScore = -Infinity;
+  for (let i = 0; i < 26; i++) {
+    const x = rand(minX, maxX);
+    const y = rand(80, maxY);
+    if (!isOpenGround(x, y, 44)) continue;
+    const fromOwner = Math.hypot(x - OWNER_POS.x, y - OWNER_POS.y);
+    if (fromOwner < 240) continue;
+    const score = Math.hypot(x - g.dog.x, y - g.dog.y) + fromOwner * 0.4;
+    if (score > bestScore) {
+      bestScore = score;
+      best = { x, y };
+    }
   }
 
-  const dx = best.x - OWNER_POS.x;
-  const dy = best.y - OWNER_POS.y;
+  // The near yard's open middle — always clear, so there is a throw to make
+  // even if every sample happened to land on a roof.
+  return best ?? { x: 760, y: 210 };
+}
+
+function throwBall(g: Game): void {
+  const target = pickThrowTarget(g);
+  const dx = target.x - OWNER_POS.x;
+  const dy = target.y - OWNER_POS.y;
   const dist = Math.hypot(dx, dy);
   const flight = 0.85 + dist / 720;
   const golden = g.deliveries >= 3 && Math.random() < 0.14;
@@ -430,9 +468,15 @@ function throwBall(g: Game): void {
 }
 
 function spawnSquirrel(g: Game, target: Ball): void {
-  const edge = Math.floor(rand(0, 3));
-  const x = edge === 0 ? BOUNDS.minX - 60 : edge === 1 ? BOUNDS.maxX + 60 : rand(BOUNDS.minX, BOUNDS.maxX);
-  const y = edge === 2 ? BOUNDS.minY - 60 : rand(BOUNDS.minY, BOUNDS.maxY - 180);
+  // Down out of the treeline: over the back fence, or in along whichever side
+  // the ball landed on. Squirrels run the fence rails, so gaps mean nothing.
+  const fromSide = Math.random() < 0.45;
+  const x = fromSide
+    ? target.x < MID_FENCE_X
+      ? BOUNDS.minX - 70
+      : BOUNDS.maxX + 70
+    : rand(120, WORLD_W - 160);
+  const y = fromSide ? rand(90, Math.min(target.y + 120, 520)) : BOUNDS.minY - 70;
   g.squirrels.push({
     id: g.nextId++,
     x,
@@ -550,6 +594,20 @@ function autopilot(g: Game): Input {
     }
   }
 
+  // The middle fence is solid except at the two gaps, so a demo dog that just
+  // walks at its target would stand there pushing on the boards. Aim at the
+  // nearest gap first, then straight through it once lined up.
+  if (tx < MID_FENCE_X !== dog.x < MID_FENCE_X) {
+    let gapY = FENCE_GAPS[0].y + FENCE_GAPS[0].height / 2;
+    for (const gap of FENCE_GAPS) {
+      const centre = gap.y + gap.height / 2;
+      if (Math.abs(centre - dog.y) < Math.abs(gapY - dog.y)) gapY = centre;
+    }
+    const side = dog.x < MID_FENCE_X ? 1 : -1;
+    tx = MID_FENCE_X + side * (Math.abs(dog.y - gapY) < 20 ? 120 : 70);
+    ty = gapY;
+  }
+
   const dx = tx - dog.x;
   const dy = ty - dog.y;
   const len = Math.hypot(dx, dy) || 1;
@@ -584,6 +642,19 @@ function updateDog(g: Game, dt: number, input: Input, frozen: boolean): void {
   if (dog.x > BOUNDS.maxX) { dog.x = BOUNDS.maxX; dog.vx = 0; }
   if (dog.y < BOUNDS.minY) { dog.y = BOUNDS.minY; dog.vy = 0; }
   if (dog.y > BOUNDS.maxY) { dog.y = BOUNDS.maxY; dog.vy = 0; }
+
+  // Fences and walls. Velocity keeps its tangent component, so running at a
+  // fence slides you along it toward a gap instead of pinning you flat.
+  const wall = resolveCircle(dog.x, dog.y, DOG_RADIUS);
+  if (wall) {
+    dog.x = wall.x;
+    dog.y = wall.y;
+    const into = dog.vx * wall.nx + dog.vy * wall.ny;
+    if (into < 0) {
+      dog.vx -= wall.nx * into;
+      dog.vy -= wall.ny * into;
+    }
+  }
 
   dog.speed = Math.hypot(dog.vx, dog.vy);
   if (dog.speed > 6) {
@@ -713,6 +784,21 @@ function updateBalls(g: Game, dt: number): void {
       if (ball.x > BOUNDS.maxX) { ball.x = BOUNDS.maxX; ball.vx = -Math.abs(ball.vx) * 0.55; }
       if (ball.y < BOUNDS.minY) { ball.y = BOUNDS.minY; ball.vy = Math.abs(ball.vy) * 0.55; }
       if (ball.y > BOUNDS.maxY) { ball.y = BOUNDS.maxY; ball.vy = -Math.abs(ball.vy) * 0.55; }
+
+      // Walls bounce at any height; a fence only catches a ball flying low
+      // enough to clip the rail, so a good arc clears it into the far yard.
+      const wall = resolveCircle(ball.x, ball.y, BALL_RADIUS, ball.z);
+      if (wall) {
+        ball.x = wall.x;
+        ball.y = wall.y;
+        const into = ball.vx * wall.nx + ball.vy * wall.ny;
+        if (into < 0) {
+          ball.vx -= wall.nx * into * 1.5;
+          ball.vy -= wall.ny * into * 1.5;
+          ball.spin *= -0.6;
+          if (ball.z < FENCE_HEIGHT && Math.abs(into) > 180) emit(g, 'bounce');
+        }
+      }
 
       if (ball.z <= 0) {
         ball.z = 0;
