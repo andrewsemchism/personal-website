@@ -2,9 +2,10 @@
 
 import { useRef, useState, useEffect, MouseEvent, PointerEvent } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPen, faPaintBrush, faEraser, faTrash, faCheck, faXmark, faRotateLeft, faRotateRight, faFont, faMinus, faPlus, faUpDownLeftRight } from '@fortawesome/free-solid-svg-icons';
+import { faPen, faPaintBrush, faEraser, faTrash, faCheck, faXmark, faRotateLeft, faRotateRight, faFont, faMinus, faPlus, faUpDownLeftRight, faCopy, faScissors, faPaste, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
-type Tool = 'marker' | 'fatMarker' | 'eraser' | 'fatEraser' | 'text';
+type SelectTool = 'rectSelect' | 'lassoSelect';
+type Tool = 'marker' | 'fatMarker' | 'eraser' | 'fatEraser' | 'text' | SelectTool;
 type Color = '#000000' | '#FF0000' | '#0000FF';
 type HandleType = 'move' | 'tl' | 'tr' | 'bl' | 'br';
 
@@ -17,6 +18,96 @@ interface PastedImage {
 }
 
 const MAX_HISTORY = 50;
+
+const SEL_MIN = 3;
+const SEL_CONTROLS_WIDTH = 236;
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface Outline {
+  d: string;
+  w: number;
+  h: number;
+}
+
+// A floating selection, like MS Paint's: its pixels live in their own canvas until it's committed
+interface Selection {
+  id: number;
+  pixels: HTMLCanvasElement;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  // Where the pixels were taken from, so they can be erased once the selection is moved
+  srcX: number;
+  srcY: number;
+  mask: Uint8Array | null;
+  lifted: boolean;
+  outline: Outline | null;
+}
+
+interface SelDragState {
+  type: HandleType;
+  startMouseX: number;
+  startMouseY: number;
+  start: Selection;
+}
+
+interface Clip {
+  pixels: HTMLCanvasElement;
+  outline: Outline | null;
+  x: number;
+  y: number;
+  pastes: number;
+}
+
+// Latest handlers for listeners registered once on mount
+interface LiveHandlers {
+  placeText: (x: number, y: number) => void;
+  beginSelect: (p: Point) => void;
+  updateSelect: (p: Point) => void;
+  endSelect: () => void;
+  keyDown: (e: KeyboardEvent) => void;
+  pasteClipboard: (hasExternalImage: boolean) => boolean;
+  commitSelection: () => void;
+}
+
+const isSelectTool = (t: Tool): t is SelectTool => t === 'rectSelect' || t === 'lassoSelect';
+
+const makeCanvas = (w: number, h: number) => {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  return c;
+};
+
+function SelectionPixels({ source }: { source: HTMLCanvasElement }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    c.width = source.width;
+    c.height = source.height;
+    c.getContext('2d')?.drawImage(source, 0, 0);
+  }, [source]);
+  return <canvas ref={ref} className="pointer-events-none" style={{ display: 'block', width: '100%', height: '100%' }} />;
+}
+
+const RectSelectIcon = () => (
+  <svg viewBox="0 0 24 24" width="1.15em" height="1.15em" fill="none" stroke="currentColor" strokeWidth={2}>
+    <rect x="3.5" y="3.5" width="17" height="17" rx="1" strokeDasharray="3.5 2.5" />
+  </svg>
+);
+
+const LassoIcon = () => (
+  <svg viewBox="0 0 24 24" width="1.15em" height="1.15em" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+    <ellipse cx="13" cy="9.5" rx="8.5" ry="6" strokeDasharray="3.5 2.5" />
+    <path d="M7.5 14.5c-2 1.5-2.5 4-0.5 6" />
+  </svg>
+);
 
 const TEXT_FONT = 'Arial, Helvetica, sans-serif';
 const TEXT_LINE_HEIGHT = 1.2;
@@ -75,7 +166,16 @@ export default function Whiteboard() {
   const [textSize, setTextSize] = useState(32);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const textDragRef = useRef<TextDragState | null>(null);
-  const placeTextRef = useRef<(x: number, y: number) => void>(() => {});
+  const liveRef = useRef<LiveHandlers | null>(null);
+  const [selection, setSelectionState] = useState<Selection | null>(null);
+  const selectionRef = useRef<Selection | null>(null);
+  const selDragRef = useRef<SelDragState | null>(null);
+  const [selDraft, setSelDraftState] = useState<Point[] | null>(null);
+  const selDraftRef = useRef<Point[] | null>(null);
+  const clipboardRef = useRef<Clip | null>(null);
+  // False once the window loses focus, since the system clipboard may hold something newer
+  const clipboardFreshRef = useRef(false);
+  const [hasClip, setHasClip] = useState(false);
 
   useEffect(() => {
     toolRef.current = tool;
@@ -122,6 +222,7 @@ export default function Whiteboard() {
   };
 
   const undo = () => {
+    commitSelection();
     const prev = undoStackRef.current.pop();
     const current = takeSnapshot();
     if (!prev || !current) return;
@@ -131,6 +232,7 @@ export default function Whiteboard() {
   };
 
   const redo = () => {
+    commitSelection();
     const next = redoStackRef.current.pop();
     const current = takeSnapshot();
     if (!next || !current) return;
@@ -180,7 +282,8 @@ export default function Whiteboard() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       const { x, y } = getPos(e.touches[0]);
-      if (toolRef.current === 'text') { placeTextRef.current(x, y); return; }
+      if (toolRef.current === 'text') { liveRef.current?.placeText(x, y); return; }
+      if (isSelectTool(toolRef.current)) { liveRef.current?.beginSelect({ x, y }); return; }
       isDrawingRef.current = true;
       beginStroke();
       ctx.beginPath();
@@ -189,6 +292,7 @@ export default function Whiteboard() {
 
     const handleTouchMove = (e: TouchEvent) => {
       e.preventDefault();
+      if (selDraftRef.current) { liveRef.current?.updateSelect(getPos(e.touches[0])); return; }
       if (!isDrawingRef.current) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
@@ -200,15 +304,19 @@ export default function Whiteboard() {
     };
 
     const handleTouchEnd = () => {
+      if (selDraftRef.current) liveRef.current?.endSelect();
       isDrawingRef.current = false;
       pendingSnapshotRef.current = null;
       setIsDrawing(false);
     };
 
     const handlePaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (const item of Array.from(items)) {
+      if (e.target instanceof HTMLTextAreaElement) return;
+      const items = Array.from(e.clipboardData?.items ?? []);
+      const hasExternalImage = items.some((item) => item.type.startsWith('image/'));
+      if (liveRef.current?.pasteClipboard(hasExternalImage)) { e.preventDefault(); return; }
+      if (hasExternalImage) liveRef.current?.commitSelection();
+      for (const item of items) {
         if (item.type.startsWith('image/')) {
           const file = item.getAsFile();
           if (!file) continue;
@@ -235,18 +343,13 @@ export default function Whiteboard() {
       }
     };
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey)) return;
-      // Let the text box keep its own native undo while typing
-      if (e.target instanceof HTMLTextAreaElement) return;
-      const key = e.key.toLowerCase();
-      if (key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
-      else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); redo(); }
-    };
+    const handleKeyDown = (e: KeyboardEvent) => liveRef.current?.keyDown(e);
+    const handleBlur = () => { clipboardFreshRef.current = false; };
 
     window.addEventListener('resize', handleResize);
     window.addEventListener('paste', handlePaste);
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('blur', handleBlur);
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd);
@@ -255,6 +358,7 @@ export default function Whiteboard() {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('paste', handlePaste);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('blur', handleBlur);
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
       canvas.removeEventListener('touchend', handleTouchEnd);
@@ -265,6 +369,13 @@ export default function Whiteboard() {
     if (pastedImage) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    commitSelection();
+    if (isSelectTool(tool)) {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      beginSelect({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      return;
+    }
     if (tool === 'text') {
       // Keep focus from leaving the new text box
       e.preventDefault();
@@ -311,6 +422,7 @@ export default function Whiteboard() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    commitSelection();
     pushHistory();
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -372,12 +484,251 @@ export default function Whiteboard() {
       text: '',
     });
   };
-  useEffect(() => { placeTextRef.current = placeText; });
-
   const selectTool = (t: Tool) => {
     if (t !== 'text') commitText();
+    if (t !== tool) commitSelection();
     setTool(t);
   };
+
+  // --- Selection (rectangle + lasso), modelled on MS Paint ---
+
+  const setSelection = (sel: Selection | null) => {
+    selectionRef.current = sel;
+    setSelectionState(sel);
+  };
+
+  const setSelDraft = (pts: Point[] | null) => {
+    selDraftRef.current = pts;
+    setSelDraftState(pts);
+  };
+
+  const clampToCanvas = (p: Point): Point => {
+    const canvas = canvasRef.current;
+    if (!canvas) return p;
+    return { x: Math.min(canvas.width, Math.max(0, p.x)), y: Math.min(canvas.height, Math.max(0, p.y)) };
+  };
+
+  const createSelection = (points: Point[], lasso: boolean) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
+    const x0 = Math.max(0, Math.floor(Math.min(...xs)));
+    const y0 = Math.max(0, Math.floor(Math.min(...ys)));
+    const w = Math.min(canvas.width, Math.ceil(Math.max(...xs))) - x0;
+    const h = Math.min(canvas.height, Math.ceil(Math.max(...ys))) - y0;
+    if (w < SEL_MIN || h < SEL_MIN || (lasso && points.length < 3)) return;
+
+    let mask: Uint8Array | null = null;
+    let outline: Outline | null = null;
+    if (lasso) {
+      const maskCtx = makeCanvas(w, h).getContext('2d');
+      if (!maskCtx) return;
+      maskCtx.beginPath();
+      points.forEach((p, i) => (i ? maskCtx.lineTo(p.x - x0, p.y - y0) : maskCtx.moveTo(p.x - x0, p.y - y0)));
+      maskCtx.closePath();
+      maskCtx.fill();
+      // Hard-edged mask so moved pieces don't leave faint outlines behind
+      const alpha = maskCtx.getImageData(0, 0, w, h).data;
+      mask = new Uint8Array(w * h);
+      for (let i = 0; i < mask.length; i++) mask[i] = alpha[i * 4 + 3] >= 128 ? 1 : 0;
+      outline = { d: `M${points.map((p) => `${p.x - x0} ${p.y - y0}`).join('L')}Z`, w, h };
+    }
+
+    const data = ctx.getImageData(x0, y0, w, h);
+    if (mask) for (let i = 0; i < mask.length; i++) if (!mask[i]) data.data[i * 4 + 3] = 0;
+    const pixels = makeCanvas(w, h);
+    pixels.getContext('2d')?.putImageData(data, 0, 0);
+    setSelection({ id: Date.now(), pixels, x: x0, y: y0, w, h, srcX: x0, srcY: y0, mask, lifted: false, outline });
+  };
+
+  const beginSelect = (p: Point) => {
+    commitSelection();
+    setSelDraft([clampToCanvas(p)]);
+  };
+
+  const updateSelect = (raw: Point) => {
+    const pts = selDraftRef.current;
+    if (!pts) return;
+    const p = clampToCanvas(raw);
+    if (tool === 'lassoSelect') {
+      const last = pts[pts.length - 1];
+      if (Math.hypot(p.x - last.x, p.y - last.y) >= 2) setSelDraft([...pts, p]);
+    } else {
+      setSelDraft([pts[0], p]);
+    }
+  };
+
+  const endSelect = () => {
+    const pts = selDraftRef.current;
+    setSelDraft(null);
+    if (pts) createSelection(pts, tool === 'lassoSelect');
+  };
+
+  // Fill the selection's original spot with white
+  const eraseSource = (sel: Selection) => {
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    const { width, height } = sel.pixels;
+    if (!sel.mask) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(sel.srcX, sel.srcY, width, height);
+      return;
+    }
+    const data = ctx.getImageData(sel.srcX, sel.srcY, width, height);
+    for (let i = 0; i < sel.mask.length; i++) {
+      if (sel.mask[i]) data.data.fill(255, i * 4, i * 4 + 4);
+    }
+    ctx.putImageData(data, sel.srcX, sel.srcY);
+  };
+
+  // Detach the pixels from the board; the whole move/resize becomes one undo step
+  const liftSelection = (sel: Selection, keepOriginal: boolean): Selection => {
+    pushHistory();
+    if (!keepOriginal) eraseSource(sel);
+    return { ...sel, lifted: true };
+  };
+
+  const stampSelection = (sel: Selection) => {
+    const ctx = canvasRef.current?.getContext('2d');
+    ctx?.drawImage(sel.pixels, sel.x, sel.y, sel.w, sel.h);
+  };
+
+  const commitSelection = () => {
+    const sel = selectionRef.current;
+    if (!sel) return;
+    if (sel.lifted) stampSelection(sel);
+    setSelection(null);
+  };
+
+  const deleteSelection = () => {
+    const sel = selectionRef.current;
+    if (!sel) return;
+    if (!sel.lifted) {
+      pushHistory();
+      eraseSource(sel);
+    }
+    setSelection(null);
+  };
+
+  const copySelection = (pastes = 1) => {
+    const sel = selectionRef.current;
+    if (!sel) return;
+    const pixels = makeCanvas(Math.round(sel.w), Math.round(sel.h));
+    pixels.getContext('2d')?.drawImage(sel.pixels, 0, 0, pixels.width, pixels.height);
+    clipboardRef.current = { pixels, outline: sel.outline, x: sel.x, y: sel.y, pastes };
+    clipboardFreshRef.current = true;
+    setHasClip(true);
+    // Best effort: also put it on the system clipboard so it can be pasted into other apps
+    try {
+      const blob = new Promise<Blob>((resolve, reject) =>
+        pixels.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png'),
+      );
+      navigator.clipboard?.write([new ClipboardItem({ 'image/png': blob })]).catch(() => {});
+    } catch {}
+  };
+
+  const cutSelection = () => {
+    copySelection(0);
+    deleteSelection();
+  };
+
+  const pasteClipboard = (hasExternalImage = false) => {
+    const clip = clipboardRef.current;
+    const canvas = canvasRef.current;
+    if (!clip || !canvas || (hasExternalImage && !clipboardFreshRef.current)) return false;
+    commitSelection();
+    commitText();
+    const offset = clip.pastes * 20;
+    clip.pastes++;
+    const { width: w, height: h } = clip.pixels;
+    const x = Math.max(0, Math.min(clip.x + offset, canvas.width - Math.min(w, 40)));
+    const y = Math.max(0, Math.min(clip.y + offset, canvas.height - Math.min(h, 40)));
+    const pixels = makeCanvas(w, h);
+    pixels.getContext('2d')?.drawImage(clip.pixels, 0, 0);
+    pushHistory();
+    setSelection({ id: Date.now(), pixels, x, y, w, h, srcX: x, srcY: y, mask: null, lifted: true, outline: clip.outline });
+    if (!isSelectTool(tool)) setTool('rectSelect');
+    return true;
+  };
+
+  const selectAll = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    commitSelection();
+    commitText();
+    setTool('rectSelect');
+    createSelection([{ x: 0, y: 0 }, { x: canvas.width, y: canvas.height }], false);
+  };
+
+  const nudgeSelection = (dx: number, dy: number) => {
+    let sel = selectionRef.current;
+    if (!sel) return;
+    if (!sel.lifted) sel = liftSelection(sel, false);
+    setSelection({ ...sel, x: sel.x + dx, y: sel.y + dy });
+  };
+
+  const startSelDrag = (e: PointerEvent<HTMLElement>, type: HandleType) => {
+    let sel = selectionRef.current;
+    if (!sel) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    // Ctrl/Alt-drag leaves a copy behind, like Paint
+    const duplicate = type === 'move' && (e.ctrlKey || e.metaKey || e.altKey);
+    if (!sel.lifted) sel = liftSelection(sel, duplicate);
+    else if (duplicate) stampSelection(sel);
+    setSelection(sel);
+    selDragRef.current = { type, startMouseX: e.clientX, startMouseY: e.clientY, start: sel };
+  };
+
+  const moveSelDrag = (e: PointerEvent<HTMLElement>) => {
+    const drag = selDragRef.current;
+    const sel = selectionRef.current;
+    if (!drag || !sel) return;
+    const dx = Math.round(e.clientX - drag.startMouseX);
+    const dy = Math.round(e.clientY - drag.startMouseY);
+    const { x, y, w, h } = drag.start;
+    const left = drag.type === 'tl' || drag.type === 'bl';
+    const top = drag.type === 'tl' || drag.type === 'tr';
+    if (drag.type === 'move') {
+      setSelection({ ...sel, x: x + dx, y: y + dy });
+      return;
+    }
+    const nw = Math.max(SEL_MIN, left ? w - dx : w + dx);
+    const nh = Math.max(SEL_MIN, top ? h - dy : h + dy);
+    setSelection({ ...sel, x: left ? x + w - nw : x, y: top ? y + h - nh : y, w: nw, h: nh });
+  };
+
+  const endSelDrag = () => { selDragRef.current = null; };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // Let the text box keep its own native shortcuts while typing
+    if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+    const mod = e.metaKey || e.ctrlKey;
+    const key = e.key.toLowerCase();
+    if (mod && key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+    if (mod && ((key === 'z' && e.shiftKey) || key === 'y')) { e.preventDefault(); redo(); return; }
+    if (mod && key === 'a') { e.preventDefault(); selectAll(); return; }
+    if (!selectionRef.current) return;
+    if (mod && key === 'c') { e.preventDefault(); copySelection(); }
+    else if (mod && key === 'x') { e.preventDefault(); cutSelection(); }
+    else if (key === 'delete' || key === 'backspace') { e.preventDefault(); deleteSelection(); }
+    else if (key === 'escape' || key === 'enter') { e.preventDefault(); commitSelection(); }
+    else if (key.startsWith('arrow')) {
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : 1;
+      nudgeSelection(
+        key === 'arrowleft' ? -step : key === 'arrowright' ? step : 0,
+        key === 'arrowup' ? -step : key === 'arrowdown' ? step : 0,
+      );
+    }
+  };
+
+  useEffect(() => {
+    liveRef.current = { placeText, beginSelect, updateSelect, endSelect, keyDown: handleKeyDown, pasteClipboard, commitSelection };
+  });
 
   useEffect(() => {
     if (!textBox) return;
@@ -427,6 +778,11 @@ export default function Whiteboard() {
   };
 
   const handleGlobalMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    if (selDraftRef.current) {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect) updateSelect({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      return;
+    }
     const drag = imageDragRef.current;
     if (!drag) return;
     const dx = e.clientX - drag.startMouseX;
@@ -463,6 +819,7 @@ export default function Whiteboard() {
 
   const handleGlobalMouseUp = () => {
     imageDragRef.current = null;
+    if (selDraftRef.current) endSelect();
   };
 
   const isEraser = tool === 'eraser' || tool === 'fatEraser';
@@ -475,6 +832,13 @@ export default function Whiteboard() {
   const textControlsLeft = textBox
     ? Math.max(8 - textBox.x, Math.min(0, window.innerWidth - 8 - TEXT_CONTROLS_WIDTH - textBox.x))
     : 0;
+
+  const selActionsAbove = selection ? selection.y >= 64 : true;
+  const selControlsLeft = selection
+    ? Math.max(8 - selection.x, Math.min(selection.w - SEL_CONTROLS_WIDTH, window.innerWidth - 8 - SEL_CONTROLS_WIDTH - selection.x))
+    : 0;
+  const draftStart = selDraft?.[0];
+  const draftEnd = selDraft?.[selDraft.length - 1];
 
   const toolBtn = (active: boolean) =>
     `w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center rounded-full text-sm transition-all ${
@@ -499,9 +863,16 @@ export default function Whiteboard() {
       className="relative w-full h-screen overflow-hidden"
       onMouseMove={handleGlobalMouseMove}
       onMouseUp={handleGlobalMouseUp}
+      onMouseLeave={handleGlobalMouseUp}
     >
       {/* Floating bottom toolbar */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center sm:gap-1 px-2 sm:px-3 py-2 max-w-[calc(100vw-16px)] overflow-x-auto bg-white rounded-full shadow-2xl border border-gray-100">
+        <button onClick={() => selectTool('rectSelect')} aria-label="Rectangle Select" title="Rectangle select" className={toolBtn(tool === 'rectSelect')}>
+          <RectSelectIcon />
+        </button>
+        <button onClick={() => selectTool('lassoSelect')} aria-label="Free-form Select" title="Free-form select" className={toolBtn(tool === 'lassoSelect')}>
+          <LassoIcon />
+        </button>
         <button onClick={() => { selectTool('marker'); lastDrawingTool.current = 'marker'; }} aria-label="Marker" title="Marker" className={toolBtn(tool === 'marker')}>
           <FontAwesomeIcon icon={faPen} />
         </button>
@@ -572,6 +943,131 @@ export default function Whiteboard() {
             transform: 'translate(-50%, -50%)',
           }}
         />
+      )}
+
+      {/* Selection being drawn */}
+      {selDraft && draftStart && draftEnd && (
+        <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%" style={{ zIndex: 22 }}>
+          {tool === 'lassoSelect' ? (
+            <>
+              <polyline points={selDraft.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#ffffff" strokeWidth={2} />
+              <polyline points={selDraft.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#1f2937" strokeWidth={1} strokeDasharray="4 3" />
+            </>
+          ) : (
+            <>
+              {(['#ffffff', '#1f2937'] as const).map((stroke) => (
+                <rect
+                  key={stroke}
+                  x={Math.min(draftStart.x, draftEnd.x) + 0.5}
+                  y={Math.min(draftStart.y, draftEnd.y) + 0.5}
+                  width={Math.abs(draftEnd.x - draftStart.x)}
+                  height={Math.abs(draftEnd.y - draftStart.y)}
+                  fill="none"
+                  stroke={stroke}
+                  strokeWidth={stroke === '#ffffff' ? 2 : 1}
+                  strokeDasharray={stroke === '#ffffff' ? undefined : '4 3'}
+                />
+              ))}
+            </>
+          )}
+        </svg>
+      )}
+
+      {/* Floating selection */}
+      {selection && (
+        <div
+          className="absolute"
+          style={{ left: selection.x, top: selection.y, width: selection.w, height: selection.h, zIndex: 22 }}
+        >
+          <div
+            className="absolute inset-0 cursor-move"
+            style={{ outline: '1px dashed #2563eb', touchAction: 'none' }}
+            onPointerDown={(e) => startSelDrag(e, 'move')}
+            onPointerMove={moveSelDrag}
+            onPointerUp={endSelDrag}
+          >
+            <SelectionPixels source={selection.pixels} />
+            {selection.outline && (
+              <svg
+                className="absolute inset-0 pointer-events-none overflow-visible"
+                width="100%"
+                height="100%"
+                viewBox={`0 0 ${selection.outline.w} ${selection.outline.h}`}
+                preserveAspectRatio="none"
+              >
+                <path d={selection.outline.d} fill="none" stroke="#ffffff" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+                <path d={selection.outline.d} fill="none" stroke="#1f2937" strokeWidth={1} strokeDasharray="4 3" vectorEffect="non-scaling-stroke" />
+              </svg>
+            )}
+          </div>
+
+          {/* Corner resize handles */}
+          {handles.map(({ type, style }) => (
+            <div
+              key={type}
+              className="absolute w-3 h-3 bg-white border-2 border-blue-600 rounded-sm"
+              style={{ ...style, touchAction: 'none' }}
+              onPointerDown={(e) => startSelDrag(e, type)}
+              onPointerMove={moveSelDrag}
+              onPointerUp={endSelDrag}
+            />
+          ))}
+
+          {/* Copy / cut / paste / delete / done */}
+          <div
+            className="absolute flex items-center gap-1 p-1 bg-white rounded-full shadow-lg border border-gray-100 whitespace-nowrap"
+            style={{
+              left: selControlsLeft,
+              ...(selActionsAbove ? { bottom: '100%', marginBottom: 12 } : { top: '100%', marginTop: 12 }),
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {([
+              { label: 'Copy', hint: 'Ctrl+C', icon: faCopy },
+              { label: 'Cut', hint: 'Ctrl+X', icon: faScissors },
+              { label: 'Paste', hint: 'Ctrl+V', icon: faPaste },
+              { label: 'Delete', hint: 'Del', icon: faTrashCan },
+            ] as const).map(({ label, hint, icon }) => (
+              <button
+                key={label}
+                onClick={() => {
+                  if (label === 'Copy') copySelection();
+                  else if (label === 'Cut') cutSelection();
+                  else if (label === 'Paste') pasteClipboard();
+                  else deleteSelection();
+                }}
+                disabled={label === 'Paste' && !hasClip}
+                className="w-10 h-10 flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                aria-label={`${label} selection`}
+                title={`${label} (${hint})`}
+              >
+                <FontAwesomeIcon icon={icon} />
+              </button>
+            ))}
+            <div className="w-px h-6 bg-gray-200 mx-1" />
+            <button
+              onClick={commitSelection}
+              className="w-10 h-10 flex items-center justify-center bg-green-500 text-white rounded-full hover:bg-green-600 cursor-pointer"
+              aria-label="Done with selection"
+              title="Done (Esc)"
+            >
+              <FontAwesomeIcon icon={faCheck} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Paste button for touch screens once the selection is gone */}
+      {isSelectTool(tool) && hasClip && !selection && !selDraft && (
+        <button
+          onClick={() => pasteClipboard()}
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-30 h-10 px-4 flex items-center gap-2 bg-white text-gray-700 rounded-full shadow-lg border border-gray-100 hover:bg-gray-50 text-sm font-semibold cursor-pointer"
+          aria-label="Paste"
+          title="Paste (Ctrl+V)"
+        >
+          <FontAwesomeIcon icon={faPaste} />
+          Paste
+        </button>
       )}
 
       {/* Text box being edited */}
