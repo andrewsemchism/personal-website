@@ -1,10 +1,10 @@
 'use client';
 
-import { useRef, useState, useEffect, MouseEvent } from 'react';
+import { useRef, useState, useEffect, MouseEvent, PointerEvent } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPen, faPaintBrush, faEraser, faTrash, faCheck, faXmark, faRotateLeft, faRotateRight } from '@fortawesome/free-solid-svg-icons';
+import { faPen, faPaintBrush, faEraser, faTrash, faCheck, faXmark, faRotateLeft, faRotateRight, faFont, faMinus, faPlus, faUpDownLeftRight } from '@fortawesome/free-solid-svg-icons';
 
-type Tool = 'marker' | 'fatMarker' | 'eraser' | 'fatEraser';
+type Tool = 'marker' | 'fatMarker' | 'eraser' | 'fatEraser' | 'text';
 type Color = '#000000' | '#FF0000' | '#0000FF';
 type HandleType = 'move' | 'tl' | 'tr' | 'bl' | 'br';
 
@@ -17,6 +17,34 @@ interface PastedImage {
 }
 
 const MAX_HISTORY = 50;
+
+const TEXT_FONT = 'Arial, Helvetica, sans-serif';
+const TEXT_LINE_HEIGHT = 1.2;
+const TEXT_PAD = 6;
+const TEXT_CONTROLS_WIDTH = 318;
+const TEXT_SIZES = [12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128, 160];
+
+interface TextBox {
+  id: number;
+  x: number;
+  y: number;
+  text: string;
+}
+
+interface TextDragState {
+  startMouseX: number;
+  startMouseY: number;
+  startX: number;
+  startY: number;
+}
+
+let measureCtx: CanvasRenderingContext2D | null = null;
+const measureLines = (lines: string[], size: number) => {
+  measureCtx ??= document.createElement('canvas').getContext('2d');
+  if (!measureCtx) return 0;
+  measureCtx.font = `${size}px ${TEXT_FONT}`;
+  return Math.max(0, ...lines.map((l) => measureCtx!.measureText(l).width));
+};
 
 interface DragState {
   type: HandleType;
@@ -43,6 +71,11 @@ export default function Whiteboard() {
   const pendingSnapshotRef = useRef<ImageData | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [textBox, setTextBox] = useState<TextBox | null>(null);
+  const [textSize, setTextSize] = useState(32);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const textDragRef = useRef<TextDragState | null>(null);
+  const placeTextRef = useRef<(x: number, y: number) => void>(() => {});
 
   useEffect(() => {
     toolRef.current = tool;
@@ -147,6 +180,7 @@ export default function Whiteboard() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       const { x, y } = getPos(e.touches[0]);
+      if (toolRef.current === 'text') { placeTextRef.current(x, y); return; }
       isDrawingRef.current = true;
       beginStroke();
       ctx.beginPath();
@@ -203,6 +237,8 @@ export default function Whiteboard() {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
+      // Let the text box keep its own native undo while typing
+      if (e.target instanceof HTMLTextAreaElement) return;
       const key = e.key.toLowerCase();
       if (key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
       else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); redo(); }
@@ -229,6 +265,13 @@ export default function Whiteboard() {
     if (pastedImage) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (tool === 'text') {
+      // Keep focus from leaving the new text box
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      placeText(e.clientX - rect.left, e.clientY - rect.top);
+      return;
+    }
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     isDrawingRef.current = true;
@@ -294,6 +337,83 @@ export default function Whiteboard() {
     setPastedImage(null);
   };
 
+  const drawTextToCanvas = (box: TextBox) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    pushHistory();
+    ctx.font = `${textSize}px ${TEXT_FONT}`;
+    ctx.fillStyle = markerColor;
+    ctx.textBaseline = 'alphabetic';
+    // Match the textarea's CSS line box so the text lands exactly where it was typed
+    const m = ctx.measureText('Hg');
+    const ascent = m.fontBoundingBoxAscent;
+    const lineH = textSize * TEXT_LINE_HEIGHT;
+    const halfLeading = (lineH - (ascent + m.fontBoundingBoxDescent)) / 2;
+    box.text.split('\n').forEach((line, i) => {
+      ctx.fillText(line, box.x + TEXT_PAD, box.y + TEXT_PAD + i * lineH + halfLeading + ascent);
+    });
+  };
+
+  const commitText = () => {
+    if (!textBox) return;
+    if (textBox.text.trim()) drawTextToCanvas(textBox);
+    setTextBox(null);
+  };
+
+  const cancelText = () => setTextBox(null);
+
+  const placeText = (x: number, y: number) => {
+    commitText();
+    setTextBox({
+      id: Date.now(),
+      x: x - TEXT_PAD,
+      y: y - TEXT_PAD - (textSize * TEXT_LINE_HEIGHT) / 2,
+      text: '',
+    });
+  };
+  useEffect(() => { placeTextRef.current = placeText; });
+
+  const selectTool = (t: Tool) => {
+    if (t !== 'text') commitText();
+    setTool(t);
+  };
+
+  useEffect(() => {
+    if (!textBox) return;
+    const id = requestAnimationFrame(() => textAreaRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [textBox?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const changeTextSize = (dir: 1 | -1) => {
+    const idx = TEXT_SIZES.findIndex((s) => s >= textSize);
+    const next = TEXT_SIZES[Math.min(TEXT_SIZES.length - 1, Math.max(0, (idx === -1 ? TEXT_SIZES.length - 1 : idx) + dir))];
+    setTextSize(next);
+    textAreaRef.current?.focus();
+  };
+
+  const startTextDrag = (e: PointerEvent<HTMLElement>) => {
+    if (!textBox || e.target !== e.currentTarget) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    textDragRef.current = { startMouseX: e.clientX, startMouseY: e.clientY, startX: textBox.x, startY: textBox.y };
+  };
+
+  const moveTextDrag = (e: PointerEvent<HTMLElement>) => {
+    const drag = textDragRef.current;
+    if (!drag) return;
+    setTextBox((prev) => prev && {
+      ...prev,
+      x: drag.startX + e.clientX - drag.startMouseX,
+      y: drag.startY + e.clientY - drag.startMouseY,
+    });
+  };
+
+  const endTextDrag = () => {
+    textDragRef.current = null;
+    textAreaRef.current?.focus();
+  };
+
   const startImageDrag = (e: MouseEvent, type: HandleType) => {
     e.stopPropagation();
     e.preventDefault();
@@ -347,13 +467,22 @@ export default function Whiteboard() {
 
   const isEraser = tool === 'eraser' || tool === 'fatEraser';
 
+  const textLines = textBox ? textBox.text.split('\n') : [];
+  const textBoxWidth = textBox ? Math.max(measureLines(textLines, textSize), textSize * 0.6) + textSize * 0.5 : 0;
+  const textBoxHeight = textLines.length * textSize * TEXT_LINE_HEIGHT;
+  const textActionsAbove = textBox ? textBox.y >= 72 : true;
+  // Shift the controls left if they'd run off the right edge of the screen
+  const textControlsLeft = textBox
+    ? Math.max(8 - textBox.x, Math.min(0, window.innerWidth - 8 - TEXT_CONTROLS_WIDTH - textBox.x))
+    : 0;
+
   const toolBtn = (active: boolean) =>
-    `w-9 h-9 flex items-center justify-center rounded-full text-sm transition-all ${
+    `w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center rounded-full text-sm transition-all ${
       active ? 'bg-gray-800 text-white shadow-inner' : 'text-gray-600 hover:bg-gray-100'
     }`;
 
   const historyBtn =
-    'w-9 h-9 flex items-center justify-center rounded-full text-sm text-gray-600 hover:bg-gray-100 transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-default';
+    'w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center rounded-full text-sm text-gray-600 hover:bg-gray-100 transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-default';
 
   // Keep the accept/delete buttons above the image, or below it if there's no room
   const imageActionsAbove = pastedImage ? pastedImage.y >= 72 : true;
@@ -372,28 +501,31 @@ export default function Whiteboard() {
       onMouseUp={handleGlobalMouseUp}
     >
       {/* Floating bottom toolbar */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 px-3 py-2 bg-white rounded-full shadow-2xl border border-gray-100">
-        <button onClick={() => { setTool('marker'); lastDrawingTool.current = 'marker'; }} aria-label="Marker" title="Marker" className={toolBtn(tool === 'marker')}>
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center sm:gap-1 px-2 sm:px-3 py-2 max-w-[calc(100vw-16px)] overflow-x-auto bg-white rounded-full shadow-2xl border border-gray-100">
+        <button onClick={() => { selectTool('marker'); lastDrawingTool.current = 'marker'; }} aria-label="Marker" title="Marker" className={toolBtn(tool === 'marker')}>
           <FontAwesomeIcon icon={faPen} />
         </button>
-        <button onClick={() => { setTool('fatMarker'); lastDrawingTool.current = 'fatMarker'; }} aria-label="Fat Marker" title="Fat Marker" className={toolBtn(tool === 'fatMarker')}>
+        <button onClick={() => { selectTool('fatMarker'); lastDrawingTool.current = 'fatMarker'; }} aria-label="Fat Marker" title="Fat Marker" className={toolBtn(tool === 'fatMarker')}>
           <FontAwesomeIcon icon={faPaintBrush} />
         </button>
-        <button onClick={() => setTool('eraser')} aria-label="Eraser" title="Eraser" className={toolBtn(tool === 'eraser')}>
+        <button onClick={() => selectTool('eraser')} aria-label="Eraser" title="Eraser" className={toolBtn(tool === 'eraser')}>
           <FontAwesomeIcon icon={faEraser} />
         </button>
-        <button onClick={() => setTool('fatEraser')} aria-label="Fat Eraser" title="Fat Eraser" className={toolBtn(tool === 'fatEraser')}>
+        <button onClick={() => selectTool('fatEraser')} aria-label="Fat Eraser" title="Fat Eraser" className={toolBtn(tool === 'fatEraser')}>
           <FontAwesomeIcon icon={faEraser} size="lg" />
         </button>
+        <button onClick={() => selectTool('text')} aria-label="Text" title="Text (click the board to type)" className={toolBtn(tool === 'text')}>
+          <FontAwesomeIcon icon={faFont} />
+        </button>
 
-        <div className="w-px h-6 bg-gray-200 mx-1" />
+        <div className="w-px h-6 shrink-0 bg-gray-200 mx-0.5 sm:mx-1" />
 
         {(['#000000', '#FF0000', '#0000FF'] as const).map((color) => (
           <button
             key={color}
-            onClick={() => { setMarkerColor(color); setTool(lastDrawingTool.current); }}
+            onClick={() => { setMarkerColor(color); if (tool !== 'text') selectTool(lastDrawingTool.current); }}
             aria-label={color === '#000000' ? 'Black' : color === '#FF0000' ? 'Red' : 'Blue'}
-            className={`w-7 h-7 mx-1 rounded-full transition-all ${
+            className={`w-6 h-6 sm:w-7 sm:h-7 shrink-0 mx-0.5 sm:mx-1 rounded-full transition-all ${
               markerColor === color
                 ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
                 : 'opacity-60 hover:opacity-90'
@@ -402,7 +534,7 @@ export default function Whiteboard() {
           />
         ))}
 
-        <div className="w-px h-6 bg-gray-200 mx-1" />
+        <div className="w-px h-6 shrink-0 bg-gray-200 mx-0.5 sm:mx-1" />
 
         <button onClick={undo} disabled={!canUndo} aria-label="Undo" title="Undo (Ctrl+Z)" className={historyBtn}>
           <FontAwesomeIcon icon={faRotateLeft} />
@@ -411,9 +543,9 @@ export default function Whiteboard() {
           <FontAwesomeIcon icon={faRotateRight} />
         </button>
 
-        <div className="w-px h-6 bg-gray-200 mx-1" />
+        <div className="w-px h-6 shrink-0 bg-gray-200 mx-0.5 sm:mx-1" />
 
-        <button onClick={clearCanvas} aria-label="Clear" title="Clear" className="w-9 h-9 flex items-center justify-center rounded-full text-sm text-red-500 hover:bg-red-50 transition-all">
+        <button onClick={clearCanvas} aria-label="Clear" title="Clear" className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center rounded-full text-sm text-red-500 hover:bg-red-50 transition-all">
           <FontAwesomeIcon icon={faTrash} />
         </button>
       </div>
@@ -425,7 +557,7 @@ export default function Whiteboard() {
         onMouseMove={draw}
         onMouseUp={stopDrawing}
         onMouseLeave={stopDrawing}
-        className={isEraser && !pastedImage ? 'cursor-none' : 'cursor-crosshair'}
+        className={pastedImage ? 'cursor-crosshair' : isEraser ? 'cursor-none' : tool === 'text' ? 'cursor-text' : 'cursor-crosshair'}
       />
 
       {/* Eraser cursor circle */}
@@ -440,6 +572,114 @@ export default function Whiteboard() {
             transform: 'translate(-50%, -50%)',
           }}
         />
+      )}
+
+      {/* Text box being edited */}
+      {textBox && (
+        <div className="absolute" style={{ left: textBox.x, top: textBox.y, zIndex: 25 }}>
+          <div
+            onPointerDown={startTextDrag}
+            onPointerMove={moveTextDrag}
+            onPointerUp={endTextDrag}
+            style={{
+              padding: TEXT_PAD,
+              cursor: 'move',
+              outline: '2px dashed #9ca3af',
+              borderRadius: 4,
+              touchAction: 'none',
+            }}
+          >
+            <textarea
+              ref={textAreaRef}
+              value={textBox.text}
+              onChange={(e) => setTextBox({ ...textBox, text: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
+                  e.preventDefault();
+                  commitText();
+                }
+              }}
+              placeholder="Type…"
+              wrap="off"
+              spellCheck={false}
+              style={{
+                display: 'block',
+                width: textBoxWidth,
+                height: textBoxHeight,
+                fontFamily: TEXT_FONT,
+                fontSize: textSize,
+                lineHeight: TEXT_LINE_HEIGHT,
+                color: markerColor,
+                padding: 0,
+                margin: 0,
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                resize: 'none',
+                overflow: 'hidden',
+                whiteSpace: 'pre',
+              }}
+            />
+          </div>
+
+          {/* Text controls: move, size, accept, delete */}
+          <div
+            className="absolute flex items-center gap-1 p-1 bg-white rounded-full shadow-lg border border-gray-100 whitespace-nowrap"
+            style={{
+              left: textControlsLeft,
+              ...(textActionsAbove ? { bottom: '100%', marginBottom: 12 } : { top: '100%', marginTop: 12 }),
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <div
+              onPointerDown={startTextDrag}
+              onPointerMove={moveTextDrag}
+              onPointerUp={endTextDrag}
+              className="w-11 h-11 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 cursor-move"
+              style={{ touchAction: 'none' }}
+              title="Drag to move"
+            >
+              <FontAwesomeIcon icon={faUpDownLeftRight} className="pointer-events-none" />
+            </div>
+            <div className="w-px h-6 shrink-0 bg-gray-200 mx-1" />
+            <button
+              onClick={() => changeTextSize(-1)}
+              disabled={textSize <= TEXT_SIZES[0]}
+              className="w-11 h-11 flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer"
+              aria-label="Smaller text"
+              title="Smaller text"
+            >
+              <FontAwesomeIcon icon={faMinus} />
+            </button>
+            <span className="w-10 text-center text-sm font-semibold text-gray-700 tabular-nums">{textSize}</span>
+            <button
+              onClick={() => changeTextSize(1)}
+              disabled={textSize >= TEXT_SIZES[TEXT_SIZES.length - 1]}
+              className="w-11 h-11 flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer"
+              aria-label="Bigger text"
+              title="Bigger text"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+            </button>
+            <div className="w-px h-6 shrink-0 bg-gray-200 mx-1" />
+            <button
+              onClick={commitText}
+              className="w-11 h-11 flex items-center justify-center bg-green-500 text-white rounded-full hover:bg-green-600 text-lg cursor-pointer"
+              aria-label="Accept text"
+              title="Accept (Esc)"
+            >
+              <FontAwesomeIcon icon={faCheck} />
+            </button>
+            <button
+              onClick={cancelText}
+              className="w-11 h-11 flex items-center justify-center bg-red-500 text-white rounded-full hover:bg-red-600 text-lg cursor-pointer"
+              aria-label="Delete text"
+              title="Delete text"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Pasted image overlay */}
