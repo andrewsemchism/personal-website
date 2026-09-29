@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, MouseEvent } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPen, faPaintBrush, faEraser, faTrash, faCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
+import { faPen, faPaintBrush, faEraser, faTrash, faCheck, faXmark, faRotateLeft, faRotateRight } from '@fortawesome/free-solid-svg-icons';
 
 type Tool = 'marker' | 'fatMarker' | 'eraser' | 'fatEraser';
 type Color = '#000000' | '#FF0000' | '#0000FF';
@@ -15,6 +15,8 @@ interface PastedImage {
   width: number;
   height: number;
 }
+
+const MAX_HISTORY = 50;
 
 interface DragState {
   type: HandleType;
@@ -36,6 +38,11 @@ export default function Whiteboard() {
   const toolRef = useRef<Tool>(tool);
   const markerColorRef = useRef<Color>(markerColor);
   const imageDragRef = useRef<DragState | null>(null);
+  const undoStackRef = useRef<ImageData[]>([]);
+  const redoStackRef = useRef<ImageData[]>([]);
+  const pendingSnapshotRef = useRef<ImageData | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   useEffect(() => {
     toolRef.current = tool;
@@ -43,6 +50,61 @@ export default function Whiteboard() {
   }, [tool]);
 
   useEffect(() => { markerColorRef.current = markerColor; }, [markerColor]);
+
+  const syncHistoryState = () => {
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(redoStackRef.current.length > 0);
+  };
+
+  const takeSnapshot = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return null;
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+  };
+
+  const pushHistory = (snapshot: ImageData | null = takeSnapshot()) => {
+    if (!snapshot) return;
+    undoStackRef.current.push(snapshot);
+    if (undoStackRef.current.length > MAX_HISTORY) undoStackRef.current.shift();
+    redoStackRef.current = [];
+    syncHistoryState();
+  };
+
+  // Strokes only become an undo step once they actually draw something
+  const beginStroke = () => { pendingSnapshotRef.current = takeSnapshot(); };
+  const flushPendingSnapshot = () => {
+    if (!pendingSnapshotRef.current) return;
+    pushHistory(pendingSnapshotRef.current);
+    pendingSnapshotRef.current = null;
+  };
+
+  const restoreSnapshot = (snapshot: ImageData) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.putImageData(snapshot, 0, 0);
+  };
+
+  const undo = () => {
+    const prev = undoStackRef.current.pop();
+    const current = takeSnapshot();
+    if (!prev || !current) return;
+    redoStackRef.current.push(current);
+    restoreSnapshot(prev);
+    syncHistoryState();
+  };
+
+  const redo = () => {
+    const next = redoStackRef.current.pop();
+    const current = takeSnapshot();
+    if (!next || !current) return;
+    undoStackRef.current.push(current);
+    restoreSnapshot(next);
+    syncHistoryState();
+  };
 
   const applyToolStyle = (ctx: CanvasRenderingContext2D) => {
     ctx.lineCap = 'round';
@@ -86,6 +148,7 @@ export default function Whiteboard() {
       if (!ctx) return;
       const { x, y } = getPos(e.touches[0]);
       isDrawingRef.current = true;
+      beginStroke();
       ctx.beginPath();
       ctx.moveTo(x, y);
     };
@@ -96,6 +159,7 @@ export default function Whiteboard() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       const { x, y } = getPos(e.touches[0]);
+      flushPendingSnapshot();
       applyToolStyle(ctx);
       ctx.lineTo(x, y);
       ctx.stroke();
@@ -103,6 +167,7 @@ export default function Whiteboard() {
 
     const handleTouchEnd = () => {
       isDrawingRef.current = false;
+      pendingSnapshotRef.current = null;
       setIsDrawing(false);
     };
 
@@ -136,8 +201,16 @@ export default function Whiteboard() {
       }
     };
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); redo(); }
+    };
+
     window.addEventListener('resize', handleResize);
     window.addEventListener('paste', handlePaste);
+    window.addEventListener('keydown', handleKeyDown);
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd);
@@ -145,6 +218,7 @@ export default function Whiteboard() {
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('paste', handlePaste);
+      window.removeEventListener('keydown', handleKeyDown);
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
       canvas.removeEventListener('touchend', handleTouchEnd);
@@ -159,6 +233,7 @@ export default function Whiteboard() {
     if (!ctx) return;
     isDrawingRef.current = true;
     setIsDrawing(true);
+    beginStroke();
     const rect = canvas.getBoundingClientRect();
     ctx.beginPath();
     ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
@@ -175,6 +250,7 @@ export default function Whiteboard() {
     if (!isDrawing) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    flushPendingSnapshot();
     applyToolStyle(ctx);
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -182,6 +258,7 @@ export default function Whiteboard() {
 
   const stopDrawing = () => {
     isDrawingRef.current = false;
+    pendingSnapshotRef.current = null;
     setIsDrawing(false);
     setCursorPos(null);
   };
@@ -191,6 +268,7 @@ export default function Whiteboard() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    pushHistory();
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
@@ -202,6 +280,7 @@ export default function Whiteboard() {
     if (!canvas || !ctx) return;
     const img = new Image();
     img.onload = () => {
+      pushHistory();
       ctx.drawImage(img, pastedImage.x, pastedImage.y, pastedImage.width, pastedImage.height);
       URL.revokeObjectURL(pastedImage.src);
       setPastedImage(null);
@@ -273,6 +352,12 @@ export default function Whiteboard() {
       active ? 'bg-gray-800 text-white shadow-inner' : 'text-gray-600 hover:bg-gray-100'
     }`;
 
+  const historyBtn =
+    'w-9 h-9 flex items-center justify-center rounded-full text-sm text-gray-600 hover:bg-gray-100 transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-default';
+
+  // Keep the accept/delete buttons above the image, or below it if there's no room
+  const imageActionsAbove = pastedImage ? pastedImage.y >= 72 : true;
+
   const handles: { type: HandleType; style: React.CSSProperties }[] = [
     { type: 'tl', style: { top: -5,  left: -5,  cursor: 'nwse-resize' } },
     { type: 'tr', style: { top: -5,  right: -5, cursor: 'nesw-resize' } },
@@ -316,6 +401,15 @@ export default function Whiteboard() {
             style={{ backgroundColor: color }}
           />
         ))}
+
+        <div className="w-px h-6 bg-gray-200 mx-1" />
+
+        <button onClick={undo} disabled={!canUndo} aria-label="Undo" title="Undo (Ctrl+Z)" className={historyBtn}>
+          <FontAwesomeIcon icon={faRotateLeft} />
+        </button>
+        <button onClick={redo} disabled={!canRedo} aria-label="Redo" title="Redo (Ctrl+Shift+Z)" className={historyBtn}>
+          <FontAwesomeIcon icon={faRotateRight} />
+        </button>
 
         <div className="w-px h-6 bg-gray-200 mx-1" />
 
@@ -382,20 +476,28 @@ export default function Whiteboard() {
           ))}
 
           {/* Commit / cancel */}
-          <div className="absolute top-2 right-2 flex gap-1">
+          <div
+            className="absolute right-0 flex gap-3"
+            style={imageActionsAbove ? { bottom: '100%', marginBottom: 14 } : { top: '100%', marginTop: 14 }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <button
               onClick={commitImage}
-              className="w-7 h-7 flex items-center justify-center bg-green-500 text-white rounded-full shadow hover:bg-green-600 text-xs"
+              className="h-12 px-5 flex items-center gap-2 bg-green-500 text-white rounded-full shadow-lg hover:bg-green-600 text-base font-semibold whitespace-nowrap cursor-pointer"
+              aria-label="Accept image"
               title="Stamp to canvas"
             >
-              <FontAwesomeIcon icon={faCheck} />
+              <FontAwesomeIcon icon={faCheck} className="text-xl" />
+              Accept
             </button>
             <button
               onClick={cancelImage}
-              className="w-7 h-7 flex items-center justify-center bg-red-500 text-white rounded-full shadow hover:bg-red-600 text-xs"
-              title="Cancel"
+              className="h-12 px-5 flex items-center gap-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 text-base font-semibold whitespace-nowrap cursor-pointer"
+              aria-label="Delete image"
+              title="Delete image"
             >
-              <FontAwesomeIcon icon={faXmark} />
+              <FontAwesomeIcon icon={faXmark} className="text-xl" />
+              Delete
             </button>
           </div>
         </div>
