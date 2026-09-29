@@ -176,6 +176,7 @@ export default function Whiteboard() {
   // False once the window loses focus, since the system clipboard may hold something newer
   const clipboardFreshRef = useRef(false);
   const [hasClip, setHasClip] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   useEffect(() => {
     toolRef.current = tool;
@@ -708,6 +709,11 @@ export default function Whiteboard() {
     if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
     const mod = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
+    if (confirmClear) {
+      // Enter presses the focused button natively
+      if (key === 'escape') { e.preventDefault(); setConfirmClear(false); }
+      return;
+    }
     if (mod && key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
     if (mod && ((key === 'z' && e.shiftKey) || key === 'y')) { e.preventDefault(); redo(); return; }
     if (mod && key === 'a') { e.preventDefault(); selectAll(); return; }
@@ -916,10 +922,47 @@ export default function Whiteboard() {
 
         <div className="w-px h-6 shrink-0 bg-gray-200 mx-0.5 sm:mx-1" />
 
-        <button onClick={clearCanvas} aria-label="Clear" title="Clear" className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center rounded-full text-sm text-red-500 hover:bg-red-50 transition-all">
+        <button onClick={() => setConfirmClear(true)} aria-label="Clear" title="Clear" className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center rounded-full text-sm text-red-500 hover:bg-red-50 transition-all">
           <FontAwesomeIcon icon={faTrash} />
         </button>
       </div>
+
+      {/* Clear confirmation */}
+      {confirmClear && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-[2px]"
+          onPointerDown={(e) => { if (e.target === e.currentTarget) setConfirmClear(false); }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="clear-title"
+            aria-describedby="clear-desc"
+            className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center"
+          >
+            <div className="mx-auto mb-4 w-14 h-14 flex items-center justify-center rounded-full bg-red-50 text-red-500 text-xl">
+              <FontAwesomeIcon icon={faTrash} />
+            </div>
+            <h2 id="clear-title" className="text-lg font-semibold text-gray-900">Clear the whiteboard?</h2>
+            <p id="clear-desc" className="mt-1 text-sm text-gray-500">Everything on the board will be erased. You can still undo this.</p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setConfirmClear(false)}
+                className="flex-1 h-12 rounded-full bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                autoFocus
+                onClick={() => { setConfirmClear(false); clearCanvas(); }}
+                className="flex-1 h-12 rounded-full bg-red-500 text-white font-semibold hover:bg-red-600 cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Canvas */}
       <canvas
